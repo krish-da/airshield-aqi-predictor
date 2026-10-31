@@ -1,11 +1,11 @@
 {
-  "model_version": "airshield-extratreesregressor-v2.0",
-  "selected_model": "ExtraTreesRegressor",
-  "trained_at_utc": "2026-10-31T08:20:42.314837Z",
-  "training_duration_sec": 30.4,
+  "model_version": "airshield-stackedensembleregressor-v3.0",
+  "selected_model": "StackedEnsembleRegressor",
+  "trained_at_utc": "2026-10-31T09:08:04.138999Z",
+  "training_duration_sec": 104.37,
   "dataset_summary": {
-    "primary_source": "Official CPCB Multi-City Daily AQI Dataset (data.gov.in / CPCB Archive) + Open-Meteo Historical Meteorology",
-    "total_verified_samples": 20364,
+    "primary_source": "Official CPCB Multi-City Daily AQI Dataset (2015\u20132020) + CPCB-Standardized Multi-Year Archive (2023\u20132025) + Open-Meteo Historical Meteorology",
+    "total_verified_samples": 53178,
     "cities_count": 26,
     "cities_list": [
       "Ahmedabad",
@@ -35,354 +35,407 @@
       "Thiruvananthapuram",
       "Visakhapatnam"
     ],
+    "feature_count": 76,
     "train_split": {
-      "samples": 14254,
-      "start_date": "2017-01-01",
-      "end_date": "2019-10-17"
+      "samples": 37224,
+      "start_date": "2015-01-02",
+      "end_date": "2024-04-26"
     },
     "validation_split": {
-      "samples": 3055,
-      "start_date": "2019-10-17",
-      "end_date": "2020-02-29"
+      "samples": 7977,
+      "start_date": "2024-04-26",
+      "end_date": "2025-02-27"
     },
     "test_split": {
-      "samples": 3055,
-      "start_date": "2020-02-29",
-      "end_date": "2020-06-30"
+      "samples": 7977,
+      "start_date": "2025-02-27",
+      "end_date": "2025-12-30"
     }
   },
   "selected_model_metrics": {
     "train": {
-      "mae": 11.22,
-      "rmse": 18.19,
-      "r2": 0.967,
-      "category_accuracy_pct": 85.45,
-      "macro_f1": 0.8239,
-      "weighted_f1": 0.8532
+      "mae": 14.16,
+      "rmse": 22.17,
+      "r2": 0.9398,
+      "category_accuracy_pct": 81.2,
+      "macro_f1": 0.7807,
+      "weighted_f1": 0.8118
     },
     "validation": {
-      "mae": 21.73,
-      "rmse": 32.25,
-      "r2": 0.8871,
-      "category_accuracy_pct": 75.55,
-      "macro_f1": 0.6393,
-      "weighted_f1": 0.7504
+      "mae": 15.26,
+      "rmse": 25.25,
+      "r2": 0.8533,
+      "category_accuracy_pct": 78.7,
+      "macro_f1": 0.5642,
+      "weighted_f1": 0.7861
     },
     "test": {
-      "mae": 13.84,
-      "rmse": 23.26,
-      "r2": 0.7528,
-      "category_accuracy_pct": 77.28,
-      "macro_f1": 0.5472,
-      "weighted_f1": 0.759
+      "mae": 16.43,
+      "rmse": 29.44,
+      "r2": 0.8495,
+      "category_accuracy_pct": 78.29,
+      "macro_f1": 0.5358,
+      "weighted_f1": 0.7782
     },
-    "description": "Supervised ExtraTreesRegressor trained on 62 zero-leakage features"
+    "description": "Supervised StackedEnsembleRegressor trained on 76 zero-leakage features"
   },
   "candidate_benchmarks": {
     "PersistenceBaseline": {
       "train": {
-        "mae": 24.84,
-        "rmse": 41.01,
-        "r2": 0.8324,
-        "category_accuracy_pct": 71.97,
-        "macro_f1": 0.6566,
-        "weighted_f1": 0.7196
+        "mae": 22.32,
+        "rmse": 37.9,
+        "r2": 0.8243,
+        "category_accuracy_pct": 73.84,
+        "macro_f1": 0.671,
+        "weighted_f1": 0.7384
       },
       "validation": {
-        "mae": 29.17,
-        "rmse": 44.61,
-        "r2": 0.7839,
-        "category_accuracy_pct": 69.53,
-        "macro_f1": 0.6433,
-        "weighted_f1": 0.6953
+        "mae": 15.65,
+        "rmse": 27.22,
+        "r2": 0.8295,
+        "category_accuracy_pct": 79.09,
+        "macro_f1": 0.6807,
+        "weighted_f1": 0.7909
       },
       "test": {
-        "mae": 14.15,
-        "rmse": 26.93,
-        "r2": 0.6686,
-        "category_accuracy_pct": 79.84,
-        "macro_f1": 0.5135,
-        "weighted_f1": 0.7988
+        "mae": 16.13,
+        "rmse": 30.16,
+        "r2": 0.8421,
+        "category_accuracy_pct": 79.8,
+        "macro_f1": 0.7142,
+        "weighted_f1": 0.7979
       },
       "description": "Naive baseline predicting AQI(t+24h) = Observed AQI(t)"
     },
     "CatBoostRegressor": {
       "train": {
-        "mae": 17.17,
-        "rmse": 25.67,
-        "r2": 0.9343,
-        "category_accuracy_pct": 78.04,
-        "macro_f1": 0.7232,
-        "weighted_f1": 0.7774
+        "mae": 16.68,
+        "rmse": 25.93,
+        "r2": 0.9177,
+        "category_accuracy_pct": 78.44,
+        "macro_f1": 0.7428,
+        "weighted_f1": 0.7843
       },
       "validation": {
-        "mae": 23.37,
-        "rmse": 33.6,
-        "r2": 0.8774,
-        "category_accuracy_pct": 74.14,
-        "macro_f1": 0.6097,
-        "weighted_f1": 0.7345
+        "mae": 15.36,
+        "rmse": 25.22,
+        "r2": 0.8537,
+        "category_accuracy_pct": 78.5,
+        "macro_f1": 0.5625,
+        "weighted_f1": 0.7841
       },
       "test": {
-        "mae": 16.2,
-        "rmse": 25.53,
-        "r2": 0.7022,
-        "category_accuracy_pct": 74.11,
-        "macro_f1": 0.4693,
-        "weighted_f1": 0.7218
+        "mae": 16.66,
+        "rmse": 29.76,
+        "r2": 0.8462,
+        "category_accuracy_pct": 78.06,
+        "macro_f1": 0.5344,
+        "weighted_f1": 0.7763
       },
-      "description": "Supervised CatBoostRegressor trained on 62 zero-leakage features"
+      "description": "Supervised CatBoostRegressor trained on 76 zero-leakage features"
     },
     "HistGradientBoostingRegressor": {
       "train": {
-        "mae": 16.95,
-        "rmse": 26.35,
-        "r2": 0.9308,
-        "category_accuracy_pct": 78.3,
-        "macro_f1": 0.7141,
-        "weighted_f1": 0.7784
+        "mae": 16.19,
+        "rmse": 25.5,
+        "r2": 0.9204,
+        "category_accuracy_pct": 79.12,
+        "macro_f1": 0.7515,
+        "weighted_f1": 0.7909
       },
       "validation": {
-        "mae": 22.66,
-        "rmse": 32.81,
-        "r2": 0.8831,
-        "category_accuracy_pct": 75.52,
-        "macro_f1": 0.6512,
-        "weighted_f1": 0.7512
+        "mae": 15.31,
+        "rmse": 25.22,
+        "r2": 0.8536,
+        "category_accuracy_pct": 78.75,
+        "macro_f1": 0.5748,
+        "weighted_f1": 0.7871
       },
       "test": {
-        "mae": 14.51,
-        "rmse": 23.58,
-        "r2": 0.7458,
-        "category_accuracy_pct": 78.2,
-        "macro_f1": 0.5039,
-        "weighted_f1": 0.7736
+        "mae": 16.67,
+        "rmse": 30.14,
+        "r2": 0.8422,
+        "category_accuracy_pct": 78.36,
+        "macro_f1": 0.5442,
+        "weighted_f1": 0.7796
       },
-      "description": "Supervised HistGradientBoostingRegressor trained on 62 zero-leakage features"
+      "description": "Supervised HistGradientBoostingRegressor trained on 76 zero-leakage features"
     },
     "ExtraTreesRegressor": {
       "train": {
-        "mae": 11.22,
-        "rmse": 18.19,
-        "r2": 0.967,
-        "category_accuracy_pct": 85.45,
-        "macro_f1": 0.8239,
-        "weighted_f1": 0.8532
+        "mae": 11.64,
+        "rmse": 18.21,
+        "r2": 0.9594,
+        "category_accuracy_pct": 84.03,
+        "macro_f1": 0.8183,
+        "weighted_f1": 0.84
       },
       "validation": {
-        "mae": 21.73,
-        "rmse": 32.25,
-        "r2": 0.8871,
-        "category_accuracy_pct": 75.55,
-        "macro_f1": 0.6393,
-        "weighted_f1": 0.7504
+        "mae": 15.43,
+        "rmse": 25.66,
+        "r2": 0.8485,
+        "category_accuracy_pct": 78.53,
+        "macro_f1": 0.5647,
+        "weighted_f1": 0.7843
       },
       "test": {
-        "mae": 13.84,
-        "rmse": 23.26,
-        "r2": 0.7528,
-        "category_accuracy_pct": 77.28,
-        "macro_f1": 0.5472,
-        "weighted_f1": 0.759
+        "mae": 16.45,
+        "rmse": 29.32,
+        "r2": 0.8507,
+        "category_accuracy_pct": 78.25,
+        "macro_f1": 0.5307,
+        "weighted_f1": 0.7774
       },
-      "description": "Supervised ExtraTreesRegressor trained on 62 zero-leakage features"
+      "description": "Supervised ExtraTreesRegressor trained on 76 zero-leakage features"
     },
     "StackedEnsembleRegressor": {
       "train": {
-        "mae": 13.39,
-        "rmse": 21.08,
-        "r2": 0.9557,
-        "category_accuracy_pct": 82.84,
-        "macro_f1": 0.7859,
-        "weighted_f1": 0.8262
+        "mae": 14.16,
+        "rmse": 22.17,
+        "r2": 0.9398,
+        "category_accuracy_pct": 81.2,
+        "macro_f1": 0.7807,
+        "weighted_f1": 0.8118
       },
       "validation": {
-        "mae": 21.87,
-        "rmse": 32.07,
-        "r2": 0.8883,
-        "category_accuracy_pct": 75.45,
-        "macro_f1": 0.6403,
-        "weighted_f1": 0.7497
+        "mae": 15.26,
+        "rmse": 25.25,
+        "r2": 0.8533,
+        "category_accuracy_pct": 78.7,
+        "macro_f1": 0.5642,
+        "weighted_f1": 0.7861
       },
       "test": {
-        "mae": 14.07,
-        "rmse": 23.21,
-        "r2": 0.7537,
-        "category_accuracy_pct": 77.05,
-        "macro_f1": 0.5276,
-        "weighted_f1": 0.7571
+        "mae": 16.43,
+        "rmse": 29.44,
+        "r2": 0.8495,
+        "category_accuracy_pct": 78.29,
+        "macro_f1": 0.5358,
+        "weighted_f1": 0.7782
       },
-      "description": "Supervised StackedEnsembleRegressor trained on 62 zero-leakage features"
+      "description": "Supervised StackedEnsembleRegressor trained on 76 zero-leakage features"
     }
   },
   "ablation_study": {
     "with_weather_and_festival_context": {
-      "val_mae": 21.73,
-      "val_rmse": 32.25,
-      "test_mae": 13.84,
-      "test_rmse": 23.26,
-      "test_r2": 0.7528
+      "val_mae": 15.26,
+      "val_rmse": 25.25,
+      "test_mae": 16.43,
+      "test_rmse": 29.44,
+      "test_r2": 0.8495,
+      "test_category_accuracy_pct": 78.29
+    },
+    "pollutants_plus_weather_without_festivals": {
+      "val_mae": 15.89,
+      "val_rmse": 26.19,
+      "test_mae": 17.22,
+      "test_rmse": 30.79,
+      "test_r2": 0.8354,
+      "test_category_accuracy_pct": 77.89
     },
     "pollutant_lags_only_without_context": {
-      "val_mae": 22.47,
-      "val_rmse": 33.28,
-      "test_mae": 13.95,
-      "test_rmse": 23.23,
-      "test_r2": 0.7534
+      "val_mae": 16.19,
+      "val_rmse": 26.77,
+      "test_mae": 17.54,
+      "test_rmse": 31.33,
+      "test_r2": 0.8295,
+      "test_category_accuracy_pct": 77.08
     },
-    "context_mae_improvement": 0.11,
-    "context_rmse_improvement": -0.03
+    "festival_window_test_subset": {
+      "festival_window_samples": 960,
+      "pollutant_only_mae": 17.94,
+      "weather_only_mae": 17.95,
+      "full_with_regional_festival_distance_mae": 17.34,
+      "festival_window_mae_gain": 0.6,
+      "festival_window_cat_acc_pct": 73.44
+    },
+    "context_mae_improvement": 1.11,
+    "context_rmse_improvement": 1.89
   },
   "feature_importances": [
     {
       "feature": "current_aqi",
-      "importance_pct": 26.32
-    },
-    {
-      "feature": "aqi_ewm_3",
-      "importance_pct": 17.15
-    },
-    {
-      "feature": "aqi_ewm_7",
-      "importance_pct": 11.88
-    },
-    {
-      "feature": "aqi_roll_mean_3",
-      "importance_pct": 10.24
-    },
-    {
-      "feature": "sub_pm25",
-      "importance_pct": 5.07
-    },
-    {
-      "feature": "aqi_roll_max_3",
-      "importance_pct": 4.33
-    },
-    {
-      "feature": "aqi_roll_mean_7",
-      "importance_pct": 4.22
-    },
-    {
-      "feature": "aqi_ewm_14",
-      "importance_pct": 3.87
-    },
-    {
-      "feature": "aqi_roll_min_3",
-      "importance_pct": 3.47
-    },
-    {
-      "feature": "city_month_train_median_aqi",
-      "importance_pct": 2.49
+      "importance_pct": 29.05
     },
     {
       "feature": "pm25",
-      "importance_pct": 2.1
+      "importance_pct": 9.79
     },
     {
-      "feature": "aqi_lag_1",
-      "importance_pct": 1.43
+      "feature": "sub_pm25",
+      "importance_pct": 9.06
     },
     {
-      "feature": "sub_pm10",
-      "importance_pct": 0.81
+      "feature": "aqi_ewm_3",
+      "importance_pct": 6.53
     },
     {
-      "feature": "pm10",
-      "importance_pct": 0.79
+      "feature": "aqi_ewm_14",
+      "importance_pct": 5.2
+    },
+    {
+      "feature": "aqi_ewm_7",
+      "importance_pct": 5.11
     },
     {
       "feature": "co",
-      "importance_pct": 0.46
+      "importance_pct": 2.82
+    },
+    {
+      "feature": "pm25_lag_1",
+      "importance_pct": 2.47
+    },
+    {
+      "feature": "aqi_delta_24h",
+      "importance_pct": 1.71
+    },
+    {
+      "feature": "sub_pm10",
+      "importance_pct": 1.64
+    },
+    {
+      "feature": "next24h_wind_speed_ms",
+      "importance_pct": 1.59
+    },
+    {
+      "feature": "aqi_roll_max_3",
+      "importance_pct": 1.52
+    },
+    {
+      "feature": "pm10",
+      "importance_pct": 1.42
+    },
+    {
+      "feature": "aqi_roll_mean_7",
+      "importance_pct": 1.33
+    },
+    {
+      "feature": "aqi_roll_min_3",
+      "importance_pct": 1.31
+    },
+    {
+      "feature": "aqi_roll_mean_3",
+      "importance_pct": 1.18
+    },
+    {
+      "feature": "temp_change_24h",
+      "importance_pct": 1.06
+    },
+    {
+      "feature": "precipitation_mm",
+      "importance_pct": 0.92
+    },
+    {
+      "feature": "city_month_train_median_aqi",
+      "importance_pct": 0.87
+    },
+    {
+      "feature": "pm10_lag_1",
+      "importance_pct": 0.84
     }
   ],
   "uncertainty_quantiles": {
-    "q80_abs_error": 34.2,
-    "q90_abs_error": 49.0
+    "q80_abs_error": 21.8,
+    "q90_abs_error": 37.7
   },
   "city_generalization": [
     {
-      "city": "Kochi",
-      "samples": 123,
-      "mae": 9.97,
-      "rmse": 19.45,
-      "category_accuracy_pct": 86.99
+      "city": "Bhopal",
+      "samples": 307,
+      "mae": 8.38,
+      "rmse": 12.02,
+      "category_accuracy_pct": 85.67
     },
     {
-      "city": "Kolkata",
-      "samples": 123,
-      "mae": 9.94,
-      "rmse": 13.37,
-      "category_accuracy_pct": 66.67
-    },
-    {
-      "city": "Lucknow",
-      "samples": 123,
-      "mae": 21.33,
-      "rmse": 28.29,
-      "category_accuracy_pct": 75.61
-    },
-    {
-      "city": "Mumbai",
-      "samples": 123,
-      "mae": 7.43,
-      "rmse": 10.8,
-      "category_accuracy_pct": 84.55
-    },
-    {
-      "city": "Patna",
-      "samples": 123,
-      "mae": 16.71,
-      "rmse": 25.86,
-      "category_accuracy_pct": 85.37
-    },
-    {
-      "city": "Thiruvananthapuram",
-      "samples": 123,
-      "mae": 5.85,
-      "rmse": 7.46,
-      "category_accuracy_pct": 79.67
-    },
-    {
-      "city": "Amaravati",
-      "samples": 122,
-      "mae": 10.33,
-      "rmse": 12.92,
-      "category_accuracy_pct": 54.92
-    },
-    {
-      "city": "Bengaluru",
-      "samples": 122,
-      "mae": 5.87,
-      "rmse": 7.92,
-      "category_accuracy_pct": 87.7
+      "city": "Brajrajnagar",
+      "samples": 307,
+      "mae": 16.4,
+      "rmse": 25.33,
+      "category_accuracy_pct": 85.34
     },
     {
       "city": "Chandigarh",
-      "samples": 122,
-      "mae": 11.0,
-      "rmse": 14.11,
-      "category_accuracy_pct": 66.39
+      "samples": 307,
+      "mae": 13.38,
+      "rmse": 19.14,
+      "category_accuracy_pct": 78.83
     },
     {
       "city": "Chennai",
-      "samples": 122,
-      "mae": 9.52,
-      "rmse": 14.01,
-      "category_accuracy_pct": 89.34
+      "samples": 307,
+      "mae": 13.39,
+      "rmse": 18.39,
+      "category_accuracy_pct": 76.87
+    },
+    {
+      "city": "Coimbatore",
+      "samples": 307,
+      "mae": 6.06,
+      "rmse": 8.3,
+      "category_accuracy_pct": 83.71
     },
     {
       "city": "Delhi",
-      "samples": 122,
-      "mae": 18.38,
-      "rmse": 25.0,
-      "category_accuracy_pct": 82.79
+      "samples": 307,
+      "mae": 48.38,
+      "rmse": 66.33,
+      "category_accuracy_pct": 50.49
+    },
+    {
+      "city": "Ernakulam",
+      "samples": 307,
+      "mae": 6.01,
+      "rmse": 8.53,
+      "category_accuracy_pct": 89.9
     },
     {
       "city": "Gurugram",
-      "samples": 122,
-      "mae": 15.25,
-      "rmse": 20.38,
-      "category_accuracy_pct": 88.52
+      "samples": 307,
+      "mae": 63.64,
+      "rmse": 80.82,
+      "category_accuracy_pct": 37.13
+    },
+    {
+      "city": "Guwahati",
+      "samples": 307,
+      "mae": 6.9,
+      "rmse": 10.51,
+      "category_accuracy_pct": 91.21
+    },
+    {
+      "city": "Hyderabad",
+      "samples": 307,
+      "mae": 9.03,
+      "rmse": 12.48,
+      "category_accuracy_pct": 84.69
+    },
+    {
+      "city": "Jaipur",
+      "samples": 307,
+      "mae": 20.96,
+      "rmse": 31.01,
+      "category_accuracy_pct": 75.9
+    },
+    {
+      "city": "Jorapokhar",
+      "samples": 307,
+      "mae": 28.37,
+      "rmse": 37.28,
+      "category_accuracy_pct": 66.78
+    },
+    {
+      "city": "Kochi",
+      "samples": 307,
+      "mae": 6.17,
+      "rmse": 8.68,
+      "category_accuracy_pct": 89.58
+    },
+    {
+      "city": "Kolkata",
+      "samples": 307,
+      "mae": 21.67,
+      "rmse": 30.85,
+      "category_accuracy_pct": 72.96
     }
   ]
 }

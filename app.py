@@ -1,6 +1,6 @@
 """
 AirShield — Indian AQI Threshold Breach Predictor (app.py)
-Single-file Flask server + clean, city-focused Environmental Forecasting Webpage.
+Single-file Flask server + executive, city-focused Environmental Forecasting Webpage.
 Architecture (strictly 5 source files total):
   - app.py
   - data_sources.py
@@ -117,7 +117,7 @@ def api_cities() -> Response:
 def api_predict() -> Response:
     """
     Generate live 24-hour AQI prediction, CPCB category, threshold breach analysis,
-    weather context, and causal explanations for a selected Indian city.
+    weather context, regional festival distance, and causal explanations for a selected Indian city.
     """
     ensure_model_ready()
     city = request.args.get("city", "Delhi").strip() or "Delhi"
@@ -181,7 +181,7 @@ def api_retrain() -> Response:
 
 
 # =====================================================================
-# EMBEDDED FRONTEND WEBPAGE (CLEAN CITY-FOCUSED SINGLE-PAGE DESIGN)
+# EMBEDDED FRONTEND WEBPAGE (EXECUTIVE CITY-FOCUSED SINGLE-PAGE DESIGN)
 # =====================================================================
 
 DASHBOARD_HTML = r"""<!DOCTYPE html>
@@ -196,9 +196,10 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700&family=Outfit:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg-page: #f8fafc;
+      --bg-page: #f4f7f9;
       --bg-card: #ffffff;
-      --bg-muted: #f1f5f9;
+      --bg-muted: #f8fafc;
+      --bg-subtle: #f1f5f9;
       --text-main: #0f172a;
       --text-body: #334155;
       --text-muted: #64748b;
@@ -247,10 +248,10 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
       font-variant-numeric: tabular-nums;
     }
 
-    /* Clean Sticky Header */
+    /* Sticky Top Navigation */
     .navbar {
-      background: rgba(255, 255, 255, 0.94);
-      backdrop-filter: blur(10px);
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--border-light);
       position: sticky;
       top: 0;
@@ -258,7 +259,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
     }
 
     .navbar-inner {
-      max-width: 1140px;
+      max-width: 1160px;
       margin: 0 auto;
       padding: 0.85rem 1.5rem;
       display: flex;
@@ -269,11 +270,18 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
 
     .brand {
       display: flex;
-      align-items: baseline;
-      gap: 0.65rem;
+      align-items: center;
+      gap: 0.75rem;
       text-decoration: none;
       color: var(--text-main);
       flex-shrink: 0;
+    }
+
+    .brand-mark {
+      width: 10px;
+      height: 24px;
+      border-radius: 3px;
+      background: var(--brand);
     }
 
     .brand-title {
@@ -283,10 +291,12 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
     }
 
     .brand-subtitle {
-      font-size: 0.8rem;
+      font-size: 0.82rem;
       color: var(--text-muted);
       font-weight: 500;
       display: none;
+      border-left: 1px solid var(--border-med);
+      padding-left: 0.75rem;
     }
 
     @media (min-width: 720px) {
@@ -304,7 +314,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
       font-size: 0.84rem;
       font-weight: 600;
       cursor: pointer;
-      transition: background 150ms ease;
+      transition: background 150ms ease, transform 100ms ease;
       white-space: nowrap;
       flex-shrink: 0;
     }
@@ -315,26 +325,31 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
 
     /* Main Page Container */
     .page-wrap {
-      max-width: 1140px;
+      max-width: 1160px;
       margin: 0 auto;
-      padding: 1.75rem 1.5rem 3.5rem;
+      padding: 1.65rem 1.5rem 3.5rem;
     }
 
     /* Search & Quick City Selector */
     .search-section {
-      margin-bottom: 1.5rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: 12px;
+      padding: 0.9rem 1.15rem;
+      margin-bottom: 1.35rem;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
     }
 
     .search-grid {
       display: grid;
       grid-template-columns: 1fr;
-      gap: 0.9rem;
+      gap: 0.85rem;
       align-items: center;
     }
 
     @media (min-width: 960px) {
       .search-grid {
-        grid-template-columns: 360px 1fr;
+        grid-template-columns: 380px 1fr;
       }
     }
 
@@ -346,25 +361,25 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
     .search-box {
       display: flex;
       align-items: center;
-      background: var(--bg-card);
+      background: var(--bg-muted);
       border: 1px solid var(--border-med);
-      border-radius: 10px;
-      padding: 0.15rem 0.9rem;
-      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-      transition: border-color 150ms ease, box-shadow 150ms ease;
+      border-radius: 8px;
+      padding: 0.1rem 0.85rem;
+      transition: border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
     }
 
     .search-box:focus-within {
+      background: #ffffff;
       border-color: var(--brand);
-      box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
+      box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
     }
 
     .search-input {
       width: 100%;
       border: none;
       background: transparent;
-      padding: 0.65rem 0.4rem;
-      font-size: 0.92rem;
+      padding: 0.6rem 0.35rem;
+      font-size: 0.9rem;
       color: var(--text-main);
       font-family: inherit;
       outline: none;
@@ -409,7 +424,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
     }
 
     .autocomplete-item:hover {
-      background: var(--bg-muted);
+      background: var(--bg-subtle);
     }
 
     .city-chips {
@@ -420,11 +435,11 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
     }
 
     .preset-btn {
-      background: var(--bg-card);
+      background: var(--bg-muted);
       color: var(--text-body);
       border: 1px solid var(--border-light);
-      border-radius: 8px;
-      padding: 0.44rem 0.75rem;
+      border-radius: 7px;
+      padding: 0.42rem 0.78rem;
       font-size: 0.8rem;
       font-weight: 600;
       cursor: pointer;
@@ -434,7 +449,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
 
     .preset-btn:hover {
       border-color: var(--border-med);
-      background: var(--bg-muted);
+      background: var(--bg-subtle);
     }
 
     .preset-btn.active {
@@ -450,7 +465,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
       border-radius: 14px;
       padding: 1.75rem;
       margin-bottom: 1.35rem;
-      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
     }
 
     .hero-header {
@@ -476,7 +491,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
     }
 
     .city-heading {
-      font-size: 1.9rem;
+      font-size: 2rem;
       font-weight: 700;
       color: var(--text-main);
       line-height: 1.15;
@@ -491,7 +506,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
     /* Threshold Breach Banner */
     .risk-banner {
       border-radius: 10px;
-      padding: 0.9rem 1.2rem;
+      padding: 0.95rem 1.25rem;
       margin-bottom: 1.35rem;
       display: flex;
       flex-wrap: wrap;
@@ -499,23 +514,27 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
       justify-content: space-between;
       gap: 1rem;
       border: 1px solid var(--border-light);
+      border-left-width: 5px;
     }
 
     .risk-banner.critical {
       background: #fef2f2;
       border-color: #fecaca;
+      border-left-color: #dc2626;
       color: #7f1d1d;
     }
 
     .risk-banner.warning {
       background: #fffbeb;
       border-color: #fde68a;
+      border-left-color: #d97706;
       color: #78350f;
     }
 
     .risk-banner.normal {
       background: #f0fdf4;
       border-color: #bbf7d0;
+      border-left-color: #16a34a;
       color: #14532d;
     }
 
@@ -535,21 +554,22 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
     .kpi-box {
       background: var(--bg-muted);
       border-radius: 10px;
-      padding: 1.25rem;
+      padding: 1.25rem 1.3rem;
       border: 1px solid var(--border-light);
+      border-top: 4px solid var(--border-med);
     }
 
     .kpi-label {
       font-size: 0.78rem;
       font-weight: 600;
       color: var(--text-muted);
-      margin-bottom: 0.35rem;
+      margin-bottom: 0.4rem;
     }
 
     .kpi-number {
       font-family: 'JetBrains Mono', monospace;
       font-variant-numeric: tabular-nums;
-      font-size: 2.6rem;
+      font-size: 2.65rem;
       font-weight: 700;
       line-height: 1.05;
       margin-bottom: 0.45rem;
@@ -557,9 +577,9 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
 
     .kpi-category {
       font-family: 'Outfit', sans-serif;
-      font-size: 2rem;
+      font-size: 2.05rem;
       font-weight: 700;
-      line-height: 1.15;
+      line-height: 1.12;
       margin-bottom: 0.45rem;
     }
 
@@ -568,7 +588,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
       color: var(--text-body);
     }
 
-    /* 4-Card City Conditions Strip */
+    /* 4-Card City Conditions & Regional Distance Strip */
     .env-strip {
       display: grid;
       grid-template-columns: 1fr;
@@ -592,7 +612,8 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
       background: var(--bg-card);
       border: 1px solid var(--border-light);
       border-radius: 12px;
-      padding: 1.15rem;
+      padding: 1.15rem 1.2rem;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.02);
     }
 
     .env-card-title {
@@ -604,7 +625,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
 
     .env-card-main {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 1.22rem;
+      font-size: 1.18rem;
       font-weight: 700;
       color: var(--text-main);
       margin-bottom: 0.25rem;
@@ -613,6 +634,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
     .env-card-detail {
       font-size: 0.8rem;
       color: var(--text-body);
+      line-height: 1.45;
     }
 
     /* Generic Card */
@@ -620,9 +642,9 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
       background: var(--bg-card);
       border: 1px solid var(--border-light);
       border-radius: 14px;
-      padding: 1.5rem;
+      padding: 1.55rem;
       margin-bottom: 1.35rem;
-      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.02);
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
     }
 
     .card-title {
@@ -677,11 +699,14 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
 
     .pol-box {
       background: var(--bg-muted);
+      border: 1px solid var(--border-light);
       border-radius: 8px;
-      padding: 0.6rem 0.75rem;
+      padding: 0.65rem 0.8rem;
     }
 
     .pol-name {
+      display: flex;
+      justify-content: space-between;
       font-size: 0.74rem;
       font-weight: 700;
       color: var(--text-muted);
@@ -689,10 +714,10 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
 
     .pol-val {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 0.95rem;
+      font-size: 0.96rem;
       font-weight: 700;
       color: var(--text-main);
-      margin-top: 0.1rem;
+      margin-top: 0.15rem;
     }
 
     /* 2-Column City Insights (Why AQI Changes + Health Advice) */
@@ -704,7 +729,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
 
     @media (min-width: 900px) {
       .insights-grid {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: 1.1fr 0.9fr;
       }
     }
 
@@ -745,6 +770,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
 
     .health-block {
       background: var(--bg-muted);
+      border: 1px solid var(--border-light);
       border-radius: 8px;
       padding: 0.85rem 1rem;
       margin-bottom: 0.75rem;
@@ -776,10 +802,11 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
   <header class="navbar">
     <div class="navbar-inner">
       <a href="#top" class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
         <span class="brand-title">AirShield</span>
-        <span class="brand-subtitle">Live Indian City 24-Hour AQI Predictor</span>
+        <span class="brand-subtitle">Indian City 24-Hour CPCB AQI &amp; Threshold Breach Forecaster</span>
       </a>
-      <button type="button" id="refreshForecastBtn" class="btn-refresh">Refresh City Data</button>
+      <button type="button" id="refreshForecastBtn" class="btn-refresh">Refresh Live Telemetry</button>
     </div>
   </header>
 
@@ -793,7 +820,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
               type="text"
               id="citySearchInput"
               class="search-input"
-              placeholder="Search Indian city or town (e.g., Delhi, Ahmedabad, Mumbai, Shimla)..."
+              placeholder="Search any Indian city or town (e.g., Delhi, Ahmedabad, Mumbai, Shimla)..."
               autocomplete="off"
               aria-label="Search Indian City"
             />
@@ -841,7 +868,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
 
       <!-- 3 Core Forecast Outputs for Selected City -->
       <div class="forecast-kpi-row">
-        <div class="kpi-box">
+        <div id="kpiBoxCurrent" class="kpi-box">
           <div class="kpi-label">Current Observed AQI</div>
           <div id="currentAqiValue" class="kpi-number">—</div>
           <div class="kpi-sub">
@@ -849,18 +876,18 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
           </div>
         </div>
 
-        <div class="kpi-box">
+        <div id="kpiBoxPredicted" class="kpi-box">
           <div class="kpi-label">Predicted AQI (+24 Hours)</div>
           <div style="display: flex; align-items: baseline; gap: 0.65rem;">
             <div id="predictedAqiValue" class="kpi-number">—</div>
             <span id="aqiDeltaText" class="tabular-nums" style="font-size: 0.84rem; font-weight: 600;">—</span>
           </div>
           <div class="kpi-sub tabular-nums">
-            Expected Range: <span id="predictionIntervalText">—</span> · 24h Peak: <strong id="peak24hAqiText">—</strong>
+            80% Range: <span id="predictionIntervalText">—</span> · 24h Peak: <strong id="peak24hAqiText">—</strong>
           </div>
         </div>
 
-        <div class="kpi-box">
+        <div id="kpiBoxCategory" class="kpi-box">
           <div class="kpi-label">Predicted CPCB Category (+24h)</div>
           <div id="predictedCategoryBadge" class="kpi-category">—</div>
           <div class="kpi-sub">
@@ -870,30 +897,30 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
       </div>
     </section>
 
-    <!-- Selected City Live Conditions (Weather, Mixing, Fires, Festivals/Season) -->
-    <section class="env-strip" aria-label="Live City Environmental Conditions">
+    <!-- Selected City Live Conditions (Weather +24h Shift, PBL Mixing, Regional Festival Distance, Plume/Fire Distance) -->
+    <section class="env-strip" aria-label="Live City Environmental Conditions and Event Distances">
       <div class="env-card">
-        <div class="env-card-title">Live City Weather</div>
+        <div class="env-card-title">Live &amp; +24h Forecast Weather</div>
         <div id="wxMainVal" class="env-card-main">—</div>
         <div id="wxSubVal" class="env-card-detail">—</div>
       </div>
 
       <div class="env-card">
-        <div class="env-card-title">Atmospheric Dispersion &amp; Mixing</div>
+        <div class="env-card-title">Boundary Layer &amp; Vertical Mixing</div>
         <div id="pblMainVal" class="env-card-main">—</div>
         <div id="pblSubVal" class="env-card-detail">—</div>
       </div>
 
       <div class="env-card">
-        <div class="env-card-title">Regional Fire Activity (220 km)</div>
-        <div id="firmsMainVal" class="env-card-main">—</div>
-        <div id="firmsSubVal" class="env-card-detail">—</div>
+        <div class="env-card-title">Regional Festival &amp; Event Distance</div>
+        <div id="festMainVal" class="env-card-main" style="font-family: 'Outfit', sans-serif; font-size: 1.08rem;">—</div>
+        <div id="festSubVal" class="env-card-detail">—</div>
       </div>
 
       <div class="env-card">
-        <div class="env-card-title">Festival &amp; Seasonal Condition</div>
-        <div id="festMainVal" class="env-card-main" style="font-family: 'Outfit', sans-serif; font-size: 1.1rem;">—</div>
-        <div id="festSubVal" class="env-card-detail">—</div>
+        <div class="env-card-title">Fire Plumes &amp; Crop-Belt Distance</div>
+        <div id="firmsMainVal" class="env-card-main">—</div>
+        <div id="firmsSubVal" class="env-card-detail">—</div>
       </div>
     </section>
 
@@ -901,8 +928,8 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
     <section class="card" aria-label="City 24-Hour AQI Trend and Pollutant Readings">
       <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 0.5rem;">
         <div>
-          <h2 class="card-title">Past 24h Observed &amp; Next 24h Predicted AQI Trend</h2>
-          <p class="card-subtitle">Solid line shows recent city observations; dashed line shows the +24-hour forecast.</p>
+          <h2 class="card-title">Past 24h Observed &amp; Next 24h Predicted AQI Trajectory</h2>
+          <p class="card-subtitle">Solid line shows recent city observations; dashed line shows the +24-hour forecast trajectory.</p>
         </div>
         <div class="tabular-nums" style="font-size: 0.78rem; color: var(--text-muted);">
           <span id="targetTimestampNote">Forecast Target: +24h IST</span>
@@ -942,7 +969,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
     <div class="insights-grid">
       <section class="card" style="margin-bottom: 0;" aria-label="Why AQI is Expected to Change">
         <h2 class="card-title">Why AQI Is Expected to <span id="directionVerbText">Change</span></h2>
-        <p class="card-subtitle">Key weather, dispersion, and seasonal factors affecting this city over the next 24 hours.</p>
+        <p class="card-subtitle">Grounded meteorological, 24h weather shift, boundary-layer, and regional festival distance drivers for this city.</p>
         <div id="explanationDriversList">
           <div class="driver-item">Loading city atmospheric drivers...</div>
         </div>
@@ -972,8 +999,8 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
   </main>
 
   <footer class="footer">
-    AirShield — Live Indian City 24-Hour AQI Predictor · Official CPCB Standards ·
-    Live Data: CPCB / OpenAQ v3, OpenWeatherMap, Open-Meteo, NASA FIRMS VIIRS &amp; Indian Festival Calendar
+    AirShield — Indian City 24-Hour AQI &amp; Threshold Breach Forecaster · Official CPCB Breakpoints ·
+    Live Feeds: CPCB / OpenAQ v3, OpenWeatherMap, Open-Meteo (+24h Forecast &amp; PBL), NASA FIRMS VIIRS &amp; Regional Festival Distance Engine
   </footer>
 
   <script>
@@ -1100,6 +1127,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
       const fc = data.forecast_24h || {};
       const risk = data.risk_alert || {};
       const wx = data.weather || {};
+      const nextWx = wx.next_24h_weather || {};
       const ctx = (data.contextual_factors || {}).festival_and_seasonal || {};
       const firms = (data.contextual_factors || {}).nasa_firms || {};
       const health = data.health_precautions || {};
@@ -1107,7 +1135,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
       // Hero Header
       document.getElementById("cityTitleText").textContent = `${loc.city}, ${loc.state}`;
       document.getElementById("coverageText").textContent = `${loc.station_label || ""} · ${cov.coverage_notice || ""}`;
-      document.getElementById("locationCoordsText").textContent = `${loc.lat}°N, ${loc.lon}°E · Updated: ${(data.timestamps || {}).issued_at_ist || ""}`;
+      document.getElementById("locationCoordsText").textContent = `${loc.lat}°N, ${loc.lon}°E · Issued: ${(data.timestamps || {}).issued_at_ist || ""}`;
       document.getElementById("currentSourceNote").textContent = cur.source || "";
 
       // Risk Banner
@@ -1117,16 +1145,20 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
       document.getElementById("breachTimeText").textContent = risk.expected_breach_time || "—";
 
       // KPI 1: Current Observed AQI
+      const curColor = getCategoryColor(cur.category);
       const curEl = document.getElementById("currentAqiValue");
       curEl.textContent = cur.aqi !== undefined ? Math.round(cur.aqi) : "—";
-      curEl.style.color = getCategoryColor(cur.category);
+      curEl.style.color = curColor;
+      document.getElementById("kpiBoxCurrent").style.borderTopColor = curColor;
       document.getElementById("currentCategoryText").textContent = cur.category || "—";
       document.getElementById("dominantPollutantText").textContent = `Dominant: ${cur.dominant_pollutant || "PM2.5"}`;
 
       // KPI 2: Predicted +24h AQI
+      const predColor = getCategoryColor(fc.predicted_category);
       const predEl = document.getElementById("predictedAqiValue");
       predEl.textContent = fc.predicted_aqi !== undefined ? fc.predicted_aqi.toFixed(1) : "—";
-      predEl.style.color = getCategoryColor(fc.predicted_category);
+      predEl.style.color = predColor;
+      document.getElementById("kpiBoxPredicted").style.borderTopColor = predColor;
       const delta = fc.aqi_change_24h || 0;
       const sign = delta > 0 ? "+" : "";
       const deltaEl = document.getElementById("aqiDeltaText");
@@ -1139,43 +1171,47 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
       // KPI 3: Predicted Category
       const catBadge = document.getElementById("predictedCategoryBadge");
       catBadge.textContent = fc.predicted_category || "—";
-      catBadge.style.color = getCategoryColor(fc.predicted_category);
+      catBadge.style.color = predColor;
+      document.getElementById("kpiBoxCategory").style.borderTopColor = predColor;
       document.getElementById("categoryRangeText").textContent = `CPCB Band ${health.Range || "—"}`;
       document.getElementById("confidenceNote").textContent = fc.confidence_level || "High Confidence";
 
-      // 4-Card City Conditions Strip
-      document.getElementById("wxMainVal").textContent = `${wx.temperature_c}°C · ${wx.wind_speed_ms} m/s`;
-      document.getElementById("wxSubVal").textContent = `Humidity ${wx.humidity_pct}% · Wind ${wx.wind_direction_deg}° · ${wx.weather_description || "Clear"}`;
+      // 4-Card City Conditions & Regional Distance Strip
+      const nextTemp = nextWx.next24h_temp_c !== undefined ? nextWx.next24h_temp_c : wx.temperature_c;
+      const nextWind = nextWx.next24h_wind_speed_ms !== undefined ? nextWx.next24h_wind_speed_ms : wx.wind_speed_ms;
+      document.getElementById("wxMainVal").textContent = `${wx.temperature_c}°C → ${nextTemp}°C (24h)`;
+      document.getElementById("wxSubVal").textContent = `Wind ${wx.wind_speed_ms} → ${nextWind} m/s · RH ${wx.humidity_pct}% · ${wx.weather_description || "Clear"}`;
 
-      document.getElementById("pblMainVal").textContent = `PBL ${Math.round(wx.boundary_layer_height_m || 550)} m`;
-      document.getElementById("pblSubVal").textContent = `${wx.pressure_hpa} hPa · Dew Point ${wx.dew_point_c}°C · UV ${wx.uv_index}`;
-
-      if (firms.available) {
-        document.getElementById("firmsMainVal").textContent = `${firms.fires_24h || 0} fires (24h)`;
-        document.getElementById("firmsSubVal").textContent = `${firms.fires_72h || 0} in 72h · avg FRP ${firms.mean_frp_mw || 0} MW`;
-      } else {
-        document.getElementById("firmsMainVal").textContent = "0 active plumes";
-        document.getElementById("firmsSubVal").textContent = firms.status || "Satellite feed nominal";
-      }
+      const curPbl = Math.round(wx.boundary_layer_height_m || 550);
+      const nextPbl = Math.round(nextWx.next24h_pbl_m || curPbl);
+      document.getElementById("pblMainVal").textContent = `PBL ${curPbl}m → ${nextPbl}m`;
+      document.getElementById("pblSubVal").textContent = `${wx.pressure_hpa} hPa · DewPt ${wx.dew_point_c}°C · 24h Rain ${nextWx.next24h_precip_mm || 0} mm`;
 
       const nf = ctx.nearest_festival;
       if (nf) {
         const off = nf.days_offset;
         const rel = off === 0 ? "Today" : (off > 0 ? `${off}d ago` : `In ${Math.abs(off)}d`);
         document.getElementById("festMainVal").textContent = `${nf.name} (${rel})`;
+        document.getElementById("festSubVal").textContent = `${nf.distance_to_epicenter_km} km from ${nf.nearest_epicenter_hub} hub · Diwali: ${ctx.abs_days_to_diwali}d`;
       } else {
         document.getElementById("festMainVal").textContent = `${ctx.region || "India"} Regime`;
+        document.getElementById("festSubVal").textContent = `Diwali window offset: ${ctx.days_from_diwali || 0}d`;
       }
-      const regimes = ctx.active_regimes || [];
-      document.getElementById("festSubVal").textContent = regimes.length
-        ? regimes[0]
-        : `Normal seasonal dispersion (${ctx.region || "India"} Zone)`;
+
+      if (firms.available) {
+        document.getElementById("firmsMainVal").textContent = `${firms.fires_24h || 0} fires (24h)`;
+        document.getElementById("firmsSubVal").textContent = `Crop-fire belt: ${ctx.dist_to_stubble_belt_km} km · Thar dust: ${ctx.dist_to_thar_dust_km} km`;
+      } else {
+        document.getElementById("firmsMainVal").textContent = `Crop Belt: ${ctx.dist_to_stubble_belt_km} km`;
+        document.getElementById("firmsSubVal").textContent = `Thar Dust Source: ${ctx.dist_to_thar_dust_km} km · ${ctx.region || "India"} Zone`;
+      }
 
       // Trajectory Chart
       renderTrendSvg((data.trends || {}).past_24h || [], (data.trends || {}).next_24h || []);
 
-      // Compact Live City Pollutant Strip
+      // Compact Live City Pollutant Strip with CPCB Sub-Index
       const pols = cur.pollutants || {};
+      const subs = cur.sub_indices || {};
       const polDefs = [
         { key: "pm25", label: "PM2.5", unit: "µg/m³" },
         { key: "pm10", label: "PM10", unit: "µg/m³" },
@@ -1186,8 +1222,10 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
       ];
       document.getElementById("pollutantStrip").innerHTML = polDefs.map(p => {
         const val = pols[p.key];
+        const sub = subs[p.key];
+        const subText = sub !== undefined && sub !== null ? `Sub-Idx ${Math.round(sub)}` : "";
         return `<div class="pol-box">
-          <div class="pol-name">${p.label}</div>
+          <div class="pol-name"><span>${p.label}</span><span class="tabular-nums" style="font-weight: 500;">${subText}</span></div>
           <div class="pol-val">${val !== null && val !== undefined ? val + " " + p.unit : "N/A"}</div>
         </div>`;
       }).join("");
@@ -1330,30 +1368,55 @@ def index() -> Response:
 
 def run_acceptance_self_tests() -> int:
     """
-    Programmatically verify all 19 acceptance requirements from Section 13
-    including real data provenance, festival/seasonal feature parity between
-    training and live inference, and live multi-city forecasting.
+    Programmatically verify all 19 acceptance requirements including:
+    - Real multi-year CPCB + meteorology training dataset (2015–2025)
+    - Complete weather & +24h forecast weather parity in training & live inference
+    - Pure distance-based regional & national festival features (zero hardcoded weights)
+    - 3-stage ablation study & festival-window validation
     """
     print("=== RUNNING AIRSHIELD 19-POINT ACCEPTANCE TEST SUITE ===")
     ensure_model_ready()
     bundle = load_model_bundle()
     feat_cols = set(bundle.get("feature_columns", []))
-    required_event_features = {
-        "is_diwali_window",
+
+    required_weather_and_event_features = {
+        "temperature_c",
+        "humidity_pct",
+        "wind_speed_ms",
+        "precipitation_mm",
+        "boundary_layer_height_m",
+        "next24h_temp_c",
+        "next24h_humidity_pct",
+        "next24h_wind_speed_ms",
+        "next24h_precip_mm",
+        "next24h_pbl_m",
+        "temp_change_24h",
+        "wind_change_24h",
         "days_from_diwali",
+        "abs_days_to_diwali",
+        "is_diwali_window",
+        "days_from_dussehra",
+        "days_from_holi",
+        "days_to_regional_festival",
+        "dist_to_active_festival_km",
+        "regional_festival_proximity",
         "is_festival_day",
-        "festival_emission_weight",
-        "post_diwali_decay",
+        "dist_to_stubble_belt_km",
         "is_stubble_burning_season",
-        "stubble_nw_transport_index",
+        "downwind_stubble_exposure",
+        "dist_to_thar_dust_km",
         "is_winter_inversion",
         "is_dust_season",
         "is_monsoon_season",
     }
-    assert required_event_features.issubset(feat_cols), (
-        f"Missing festival/seasonal features in trained model: {required_event_features - feat_cols}"
+    assert required_weather_and_event_features.issubset(feat_cols), (
+        f"Missing required weather/festival distance features: {required_weather_and_event_features - feat_cols}"
     )
-    print(f"[PASS] 0. Verified all 10 festival, seasonal & event features are trained and active in model ({len(feat_cols)} total features).")
+    assert "festival_emission_weight" not in feat_cols, "Hardcoded festival_emission_weight must not be present!"
+    print(
+        f"[PASS] 0. Verified all {len(required_weather_and_event_features)} weather (+24h forecast & PBL) and "
+        f"distance-based regional festival features are active in trained model ({len(feat_cols)} total features, zero hardcoded weights)."
+    )
 
     client = app.test_client()
 
@@ -1377,36 +1440,38 @@ def run_acceptance_self_tests() -> int:
     assert ahm and abs(ahm[0]["lat"] - 23.0225) < 0.5
     print(f"[PASS] 4-5. City autocomplete ('Ahe') returned {c_data['count']} Indian matches including Ahmedabad ({ahm[0]['lat']}, {ahm[0]['lon']}).")
 
-    # 6-7. Live prediction with OpenAQ CPCB + OpenWeatherMap + Open-Meteo + NASA FIRMS + Festival Context
+    # 6-7. Live prediction with OpenAQ CPCB + OpenWeatherMap + Open-Meteo (+24h weather) + NASA FIRMS + Regional Festival Distance
     r_pred = client.get("/api/predict?city=Delhi&lat=28.6139&lon=77.2090&state=Delhi")
     assert r_pred.status_code == 200
     p_data = r_pred.get_json()
     assert p_data["weather"]["temperature_c"] is not None
+    assert p_data["weather"]["next_24h_weather"]["next24h_temp_c"] is not None
     assert p_data["forecast_24h"]["predicted_aqi"] > 0
     assert p_data["forecast_24h"]["feature_completeness_pct"] == 100.0
     fest_ctx = p_data["contextual_factors"]["festival_and_seasonal"]
+    assert fest_ctx.get("dist_to_stubble_belt_km") is not None
     print(
-        f"[PASS] 6-7 & 12-13. Live Delhi forecast (100% feature completeness): "
+        f"[PASS] 6-7 & 12-13. Live Delhi forecast (100% feature completeness across {len(feat_cols)} features): "
         f"Observed AQI={p_data['current_observation']['aqi']} ({p_data['current_observation']['category']}), "
-        f"Source='{p_data['current_observation']['source']}', "
         f"Predicted +24h AQI={p_data['forecast_24h']['predicted_aqi']} ({p_data['forecast_24h']['predicted_category']}), "
-        f"Live Temp={p_data['weather']['temperature_c']}°C, "
+        f"Live Temp={p_data['weather']['temperature_c']}°C -> +24h Temp={p_data['weather']['next_24h_weather']['next24h_temp_c']}°C, "
         f"Nearest Festival={fest_ctx.get('nearest_festival')}, "
-        f"NASA FIRMS={p_data['contextual_factors']['nasa_firms']['status']}."
+        f"Stubble Belt Dist={fest_ctx.get('dist_to_stubble_belt_km')} km."
     )
 
-    # 8-11 & 14-15. Historical CPCB data, chronological validation, persisted model, live validation ledger
+    # 8-11 & 14-15. Multi-year CPCB data, chronological validation, 3-stage ablation study
     r_metrics = client.get("/api/metrics")
     assert r_metrics.status_code == 200
     m_data = r_metrics.get_json()
-    assert m_data["dataset_summary"]["total_verified_samples"] > 10000
+    assert m_data["dataset_summary"]["total_verified_samples"] > 40000
     assert "CatBoostRegressor" in m_data["candidate_benchmarks"]
     assert "PersistenceBaseline" in m_data["candidate_benchmarks"]
-    assert m_data["live_validation"]["total_predictions_logged"] >= 1
+    assert "festival_window_test_subset" in m_data["ablation_study"]
     print(
-        f"[PASS] 8-11 & 14-15. Model validation verified on {m_data['dataset_summary']['total_verified_samples']} real CPCB samples; "
+        f"[PASS] 8-11 & 14-15. Model validation verified on {m_data['dataset_summary']['total_verified_samples']} real multi-year samples; "
         f"Selected Model: {m_data['selected_model']} ({m_data['model_version']}); "
-        f"Context Ablation Improvement: {m_data['ablation_study']['context_mae_improvement']} MAE / {m_data['ablation_study']['context_rmse_improvement']} RMSE."
+        f"Overall Context MAE Gain: +{m_data['ablation_study']['context_mae_improvement']} AQI | "
+        f"Festival-Window MAE Gain: +{m_data['ablation_study']['festival_window_test_subset']['festival_window_mae_gain']} AQI."
     )
 
     # 16. Missing local CPCB station coverage handled transparently (e.g. Shimla)

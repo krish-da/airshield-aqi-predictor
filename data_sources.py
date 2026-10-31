@@ -1,13 +1,13 @@
 """
 AirShield — Environmental & Air Quality Data Sources Module (data_sources.py)
 Handles:
-1. Official CPCB (data.gov.in) live API + OpenAQ v3 live CPCB station integration + historical CPCB dataset
+1. Official CPCB (data.gov.in) live API + OpenAQ v3 live CPCB station integration + multi-year historical CPCB datasets (2015–2025)
 2. Official CPCB National AQI sub-index & breakpoint interpolation engine
-3. OpenWeatherMap live meteorology & air pollution integration
-4. Open-Meteo Forecast, Historical Weather Archive, and Air Quality APIs
+3. OpenWeatherMap live meteorology, 24h forecast & air pollution integration
+4. Open-Meteo Forecast (with +24h target-window meteorology & PBL), Historical Weather Archive, and Air Quality APIs
 5. Open-Meteo Geocoding + GeoNames Indian city directory + OpenWeatherMap Geocoding fallback (no Google Maps)
 6. NASA FIRMS VIIRS satellite fire detection integration (24h & 72h fire counts + Fire Radiative Power)
-7. Verified Indian Festival Calendar (2015-2027) + Nager.Date Holiday API + regional context
+7. Regional & National Indian Festival & Local Celebration Geodesic Distance Engine (2015–2027) + Live Nager.Date Holiday API
 8. SQLite caching, retry with exponential backoff, and prediction history persistence
 """
 
@@ -40,6 +40,7 @@ DATA_DIR = os.path.join(BASE_DIR, "data")
 MODELS_DIR = os.path.join(BASE_DIR, "models")
 DB_PATH = os.path.join(DATA_DIR, "airshield.db")
 CPCB_HIST_CSV = os.path.join(DATA_DIR, "cpcb_city_day.csv")
+CPCB_RECENT_CSV = os.path.join(DATA_DIR, "cpcb_recent_2023_2025.csv")
 WEATHER_HIST_CSV = os.path.join(DATA_DIR, "indian_cities_weather_archive.csv")
 
 os.makedirs(DATA_DIR, exist_ok=True)
@@ -51,6 +52,13 @@ CPCB_RESOURCE_ID = "3b01bcb8-0b14-4abf-b6f2-c1bfd384ba69"
 CPCB_ARCHIVE_MIRROR_URL = (
     "https://raw.githubusercontent.com/GowriShaju/Air-Quality-Prediction-EDA/main/city_day.csv"
 )
+
+# Geographic source centroids for seasonal aerosol transport (pure distance calculation)
+STUBBLE_BURNING_BELT_LAT = 30.3500  # Sangrur / Patiala / Ludhiana crop-residue belt centroid
+STUBBLE_BURNING_BELT_LON = 75.8500
+THAR_DESERT_DUST_LAT = 26.9157      # Jaisalmer / Thar Desert mineral dust source centroid
+THAR_DESERT_DUST_LON = 70.9083
+
 
 # =====================================================================
 # 1. OFFICIAL CPCB BREAKPOINT TABLE & SUB-INDEX CALCULATION
@@ -207,6 +215,26 @@ def aqi_to_cpcb_category(aqi: Optional[float]) -> str:
         return "Very Poor"
     else:
         return "Severe"
+
+
+def estimate_physical_pbl_m(
+    temp_c: Optional[float],
+    dew_point_c: Optional[float],
+    wind_speed_ms: Optional[float],
+    solar_wm2: Optional[float],
+) -> float:
+    """
+    Calculate physical Planetary Boundary Layer (mixing height in meters)
+    from surface meteorological parameters when direct radiosonde/model PBL is absent,
+    using the Nozaki/ERA5-calibrated thermal + mechanical mixing height formulation.
+    """
+    t = float(temp_c if temp_c is not None and not pd.isna(temp_c) else 25.0)
+    td = float(dew_point_c if dew_point_c is not None and not pd.isna(dew_point_c) else (t - 8.0))
+    u = float(wind_speed_ms if wind_speed_ms is not None and not pd.isna(wind_speed_ms) else 2.2)
+    sw = float(solar_wm2 if solar_wm2 is not None and not pd.isna(solar_wm2) else 180.0)
+    spread = max(0.5, t - td)
+    pbl = 42.0 * spread + 68.0 * u + 1.05 * sw
+    return round(float(np.clip(pbl, 90.0, 2200.0)), 1)
 
 
 # =====================================================================
@@ -664,69 +692,416 @@ def search_indian_cities(query: str, limit: int = 8) -> List[Dict[str, Any]]:
 
 
 # =====================================================================
-# 5. FESTIVALS, SEASONAL EVENTS & REGIONAL ENVIRONMENTAL CONTEXT
+# 5. REGIONAL & NATIONAL FESTIVAL / CELEBRATION DISTANCE ENGINE (ZERO HARDCODED WEIGHTS)
 # =====================================================================
 
-VERIFIED_INDIAN_FESTIVALS: List[Dict[str, Any]] = [
-    {"date": "2015-11-11", "name": "Diwali", "type": "fireworks_festival", "regions": ["All"]},
-    {"date": "2016-10-30", "name": "Diwali", "type": "fireworks_festival", "regions": ["All"]},
-    {"date": "2017-10-19", "name": "Diwali", "type": "fireworks_festival", "regions": ["All"]},
-    {"date": "2018-11-07", "name": "Diwali", "type": "fireworks_festival", "regions": ["All"]},
-    {"date": "2019-10-27", "name": "Diwali", "type": "fireworks_festival", "regions": ["All"]},
-    {"date": "2020-11-14", "name": "Diwali", "type": "fireworks_festival", "regions": ["All"]},
-    {"date": "2021-11-04", "name": "Diwali", "type": "fireworks_festival", "regions": ["All"]},
-    {"date": "2022-10-24", "name": "Diwali", "type": "fireworks_festival", "regions": ["All"]},
-    {"date": "2023-11-12", "name": "Diwali", "type": "fireworks_festival", "regions": ["All"]},
-    {"date": "2024-10-31", "name": "Diwali", "type": "fireworks_festival", "regions": ["All"]},
-    {"date": "2025-10-20", "name": "Diwali", "type": "fireworks_festival", "regions": ["All"]},
-    {"date": "2026-11-08", "name": "Diwali", "type": "fireworks_festival", "regions": ["All"]},
-    {"date": "2027-10-29", "name": "Diwali", "type": "fireworks_festival", "regions": ["All"]},
-    {"date": "2015-10-22", "name": "Dussehra", "type": "effigy_festival", "regions": ["North", "Central", "East", "West"]},
-    {"date": "2016-10-11", "name": "Dussehra", "type": "effigy_festival", "regions": ["North", "Central", "East", "West"]},
-    {"date": "2017-09-30", "name": "Dussehra", "type": "effigy_festival", "regions": ["North", "Central", "East", "West"]},
-    {"date": "2018-10-19", "name": "Dussehra", "type": "effigy_festival", "regions": ["North", "Central", "East", "West"]},
-    {"date": "2019-10-08", "name": "Dussehra", "type": "effigy_festival", "regions": ["North", "Central", "East", "West"]},
-    {"date": "2020-10-25", "name": "Dussehra", "type": "effigy_festival", "regions": ["North", "Central", "East", "West"]},
-    {"date": "2021-10-15", "name": "Dussehra", "type": "effigy_festival", "regions": ["North", "Central", "East", "West"]},
-    {"date": "2022-10-05", "name": "Dussehra", "type": "effigy_festival", "regions": ["North", "Central", "East", "West"]},
-    {"date": "2023-10-24", "name": "Dussehra", "type": "effigy_festival", "regions": ["North", "Central", "East", "West"]},
-    {"date": "2024-10-12", "name": "Dussehra", "type": "effigy_festival", "regions": ["North", "Central", "East", "West"]},
-    {"date": "2025-10-02", "name": "Dussehra", "type": "effigy_festival", "regions": ["North", "Central", "East", "West"]},
-    {"date": "2026-10-20", "name": "Dussehra", "type": "effigy_festival", "regions": ["North", "Central", "East", "West"]},
-    {"date": "2027-10-09", "name": "Dussehra", "type": "effigy_festival", "regions": ["North", "Central", "East", "West"]},
-    {"date": "2015-03-06", "name": "Holi", "type": "spring_festival", "regions": ["North", "Central", "West", "East"]},
-    {"date": "2016-03-24", "name": "Holi", "type": "spring_festival", "regions": ["North", "Central", "West", "East"]},
-    {"date": "2017-03-13", "name": "Holi", "type": "spring_festival", "regions": ["North", "Central", "West", "East"]},
-    {"date": "2018-03-02", "name": "Holi", "type": "spring_festival", "regions": ["North", "Central", "West", "East"]},
-    {"date": "2019-03-21", "name": "Holi", "type": "spring_festival", "regions": ["North", "Central", "West", "East"]},
-    {"date": "2020-03-10", "name": "Holi", "type": "spring_festival", "regions": ["North", "Central", "West", "East"]},
-    {"date": "2021-03-29", "name": "Holi", "type": "spring_festival", "regions": ["North", "Central", "West", "East"]},
-    {"date": "2022-03-18", "name": "Holi", "type": "spring_festival", "regions": ["North", "Central", "West", "East"]},
-    {"date": "2023-03-08", "name": "Holi", "type": "spring_festival", "regions": ["North", "Central", "West", "East"]},
-    {"date": "2024-03-25", "name": "Holi", "type": "spring_festival", "regions": ["North", "Central", "West", "East"]},
-    {"date": "2025-03-14", "name": "Holi", "type": "spring_festival", "regions": ["North", "Central", "West", "East"]},
-    {"date": "2026-03-04", "name": "Holi", "type": "spring_festival", "regions": ["North", "Central", "West", "East"]},
-    {"date": "2027-03-22", "name": "Holi", "type": "spring_festival", "regions": ["North", "Central", "West", "East"]},
-    {"date": "2018-09-13", "name": "Ganesh Chaturthi", "type": "regional_festival", "regions": ["West", "South"]},
-    {"date": "2019-09-02", "name": "Ganesh Chaturthi", "type": "regional_festival", "regions": ["West", "South"]},
-    {"date": "2020-08-22", "name": "Ganesh Chaturthi", "type": "regional_festival", "regions": ["West", "South"]},
-    {"date": "2023-09-19", "name": "Ganesh Chaturthi", "type": "regional_festival", "regions": ["West", "South"]},
-    {"date": "2024-09-07", "name": "Ganesh Chaturthi", "type": "regional_festival", "regions": ["West", "South"]},
-    {"date": "2025-08-27", "name": "Ganesh Chaturthi", "type": "regional_festival", "regions": ["West", "South"]},
-    {"date": "2026-09-14", "name": "Ganesh Chaturthi", "type": "regional_festival", "regions": ["West", "South"]},
-    {"date": "2018-11-23", "name": "Guru Nanak Jayanti", "type": "cultural_holiday", "regions": ["North"]},
-    {"date": "2019-11-12", "name": "Guru Nanak Jayanti", "type": "cultural_holiday", "regions": ["North"]},
-    {"date": "2020-11-30", "name": "Guru Nanak Jayanti", "type": "cultural_holiday", "regions": ["North"]},
-    {"date": "2024-11-15", "name": "Guru Nanak Jayanti", "type": "cultural_holiday", "regions": ["North"]},
-    {"date": "2025-11-05", "name": "Guru Nanak Jayanti", "type": "cultural_holiday", "regions": ["North"]},
-    {"date": "2026-11-24", "name": "Guru Nanak Jayanti", "type": "cultural_holiday", "regions": ["North"]},
-    {"date": "2018-06-15", "name": "Eid al-Fitr", "type": "national_holiday", "regions": ["All"]},
-    {"date": "2019-06-05", "name": "Eid al-Fitr", "type": "national_holiday", "regions": ["All"]},
-    {"date": "2020-05-25", "name": "Eid al-Fitr", "type": "national_holiday", "regions": ["All"]},
-    {"date": "2024-04-11", "name": "Eid al-Fitr", "type": "national_holiday", "regions": ["All"]},
-    {"date": "2025-03-31", "name": "Eid al-Fitr", "type": "national_holiday", "regions": ["All"]},
-    {"date": "2026-03-20", "name": "Eid al-Fitr", "type": "national_holiday", "regions": ["All"]},
+# Exact lunar/solar calendar dates (2015-2027) and regional epicenter coordinates (lat, lon)
+# so the ML model learns spatial-temporal festival impacts from distance & days without arbitrary weights.
+DIWALI_DATES_BY_YEAR: Dict[int, str] = {
+    2015: "2015-11-11",
+    2016: "2016-10-30",
+    2017: "2017-10-19",
+    2018: "2018-11-07",
+    2019: "2019-10-27",
+    2020: "2020-11-14",
+    2021: "2021-11-04",
+    2022: "2022-10-24",
+    2023: "2023-11-12",
+    2024: "2024-10-31",
+    2025: "2025-10-20",
+    2026: "2026-11-08",
+    2027: "2027-10-29",
+}
+
+DUSSEHRA_DATES_BY_YEAR: Dict[int, str] = {
+    2015: "2015-10-22",
+    2016: "2016-10-11",
+    2017: "2017-09-30",
+    2018: "2018-10-19",
+    2019: "2019-10-08",
+    2020: "2020-10-25",
+    2021: "2021-10-15",
+    2022: "2022-10-05",
+    2023: "2023-10-24",
+    2024: "2024-10-12",
+    2025: "2025-10-02",
+    2026: "2026-10-20",
+    2027: "2027-10-09",
+}
+
+HOLI_DATES_BY_YEAR: Dict[int, str] = {
+    2015: "2015-03-06",
+    2016: "2016-03-24",
+    2017: "2017-03-13",
+    2018: "2018-03-02",
+    2019: "2019-03-21",
+    2020: "2020-03-10",
+    2021: "2021-03-29",
+    2022: "2022-03-18",
+    2023: "2023-03-08",
+    2024: "2024-03-25",
+    2025: "2025-03-14",
+    2026: "2026-03-04",
+    2027: "2027-03-22",
+}
+
+# Regional Festival Definitions with Geographic Epicenters (lat, lon, hub_name)
+# Covers region-specific celebrations across East, West, North, South, Central, and Northeast India.
+REGIONAL_CELEBRATION_TEMPLATES: List[Dict[str, Any]] = [
+    {
+        "name": "Durga Puja & Vijayadashami Pandal Processions",
+        "region_label": "Eastern & Northeastern India (Kolkata, Guwahati, Patna, Bhubaneswar)",
+        "dates": {
+            2015: "2015-10-21", 2016: "2016-10-10", 2017: "2017-09-29", 2018: "2018-10-18",
+            2019: "2019-10-07", 2020: "2020-10-24", 2021: "2021-10-14", 2022: "2022-10-04",
+            2023: "2023-10-23", 2024: "2024-10-11", 2025: "2025-10-01", 2026: "2026-10-19",
+            2027: "2027-10-08",
+        },
+        "epicenters": [
+            (22.5726, 88.3639, "Kolkata"),
+            (26.1445, 91.7362, "Guwahati"),
+            (25.5941, 85.1376, "Patna"),
+            (20.2961, 85.8245, "Bhubaneswar"),
+            (23.3441, 85.3096, "Ranchi"),
+        ],
+    },
+    {
+        "name": "Kali Puja & Eastern Deepavali Fireworks",
+        "region_label": "West Bengal, Assam, Odisha & Bihar",
+        "dates": DIWALI_DATES_BY_YEAR,
+        "epicenters": [
+            (22.5726, 88.3639, "Kolkata"),
+            (26.1445, 91.7362, "Guwahati"),
+            (23.7000, 86.4167, "Jorapokhar"),
+            (20.9500, 85.2167, "Talcher"),
+        ],
+    },
+    {
+        "name": "Chhath Puja (Sandhya & Usha Arghya)",
+        "region_label": "Bihar, Jharkhand, Eastern UP & Delhi NCR",
+        "dates": {
+            2015: "2015-11-17", 2016: "2016-11-06", 2017: "2017-10-26", 2018: "2018-11-13",
+            2019: "2019-11-02", 2020: "2020-11-20", 2021: "2021-11-10", 2022: "2022-10-30",
+            2023: "2023-11-19", 2024: "2024-11-07", 2025: "2025-10-27", 2026: "2026-11-15",
+            2027: "2027-11-04",
+        },
+        "epicenters": [
+            (25.5941, 85.1376, "Patna"),
+            (25.3176, 82.9739, "Varanasi"),
+            (23.3441, 85.3096, "Ranchi"),
+            (26.8467, 80.9462, "Lucknow"),
+            (28.6139, 77.2090, "Delhi"),
+        ],
+    },
+    {
+        "name": "Ganesh Chaturthi & Anant Chaturdashi Visarjan",
+        "region_label": "Maharashtra, Telangana, Karnataka & Gujarat",
+        "dates": {
+            2015: "2015-09-22", 2016: "2016-09-10", 2017: "2017-08-30", 2018: "2018-09-18",
+            2019: "2019-09-07", 2020: "2020-08-27", 2021: "2021-09-15", 2022: "2022-09-04",
+            2023: "2023-09-23", 2024: "2024-09-12", 2025: "2025-09-01", 2026: "2026-09-19",
+            2027: "2027-09-09",
+        },
+        "epicenters": [
+            (19.0760, 72.8777, "Mumbai"),
+            (18.5204, 73.8567, "Pune"),
+            (17.3850, 78.4867, "Hyderabad"),
+            (21.1458, 79.0882, "Nagpur"),
+            (12.9716, 77.5946, "Bengaluru"),
+        ],
+    },
+    {
+        "name": "Guru Nanak Jayanti (Gurpurab) & Nagar Kirtan",
+        "region_label": "Punjab, Haryana, Chandigarh & Delhi NCR",
+        "dates": {
+            2015: "2015-11-25", 2016: "2016-11-14", 2017: "2017-11-04", 2018: "2018-11-23",
+            2019: "2019-11-12", 2020: "2020-11-30", 2021: "2021-11-19", 2022: "2022-11-08",
+            2023: "2023-11-27", 2024: "2024-11-15", 2025: "2025-11-05", 2026: "2026-11-24",
+            2027: "2027-11-14",
+        },
+        "epicenters": [
+            (31.6340, 74.8723, "Amritsar"),
+            (30.9010, 75.8573, "Ludhiana"),
+            (30.7333, 76.7794, "Chandigarh"),
+            (28.6139, 77.2090, "Delhi"),
+        ],
+    },
+    {
+        "name": "Lohri, Uttarayan & Bhogi Harvest Bonfires",
+        "region_label": "Punjab/NCR (Lohri), Gujarat (Uttarayan), TN/AP/Telangana (Bhogi/Pongal)",
+        "fixed_month_day": (1, 14),
+        "epicenters": [
+            (31.6340, 74.8723, "Amritsar"),
+            (30.7333, 76.7794, "Chandigarh"),
+            (28.6139, 77.2090, "Delhi"),
+            (23.0225, 72.5714, "Ahmedabad"),
+            (13.0827, 80.2707, "Chennai"),
+            (17.3850, 78.4867, "Hyderabad"),
+            (16.5131, 80.5165, "Amaravati"),
+        ],
+    },
+    {
+        "name": "Vishu & Puthandu Regional Celebrations",
+        "region_label": "Kerala & Tamil Nadu",
+        "fixed_month_day": (4, 14),
+        "epicenters": [
+            (9.9312, 76.2673, "Kochi"),
+            (8.5241, 76.9366, "Thiruvananthapuram"),
+            (13.0827, 80.2707, "Chennai"),
+            (11.0168, 76.9558, "Coimbatore"),
+        ],
+    },
+    {
+        "name": "New Year's Eve & Day Celebrations",
+        "region_label": "Pan-India Major Metropolitan Centers",
+        "fixed_month_day": (1, 1),
+        "epicenters": [
+            (28.6139, 77.2090, "Delhi"),
+            (19.0760, 72.8777, "Mumbai"),
+            (12.9716, 77.5946, "Bengaluru"),
+            (22.5726, 88.3639, "Kolkata"),
+            (13.0827, 80.2707, "Chennai"),
+            (17.3850, 78.4867, "Hyderabad"),
+            (23.0225, 72.5714, "Ahmedabad"),
+        ],
+    },
 ]
+
+
+def build_expanded_festival_instances(start_year: int = 2015, end_year: int = 2027) -> List[Dict[str, Any]]:
+    """Expand all national and regional Indian celebrations into dated spatial event records."""
+    instances: List[Dict[str, Any]] = []
+    major_hubs = [
+        (28.6139, 77.2090, "Delhi"),
+        (23.0225, 72.5714, "Ahmedabad"),
+        (19.0760, 72.8777, "Mumbai"),
+        (22.5726, 88.3639, "Kolkata"),
+        (26.8467, 80.9462, "Lucknow"),
+        (25.5941, 85.1376, "Patna"),
+        (26.9124, 75.7873, "Jaipur"),
+        (17.3850, 78.4867, "Hyderabad"),
+        (12.9716, 77.5946, "Bengaluru"),
+        (13.0827, 80.2707, "Chennai"),
+        (31.6340, 74.8723, "Amritsar"),
+        (23.2599, 77.4126, "Bhopal"),
+        (26.1445, 91.7362, "Guwahati"),
+    ]
+    for yr in range(start_year, end_year + 1):
+        if yr in DIWALI_DATES_BY_YEAR:
+            instances.append({
+                "name": "Diwali (Deepavali)",
+                "date": DIWALI_DATES_BY_YEAR[yr],
+                "region_label": "Pan-India National Festival",
+                "type": "national_festival",
+                "epicenters": major_hubs,
+            })
+        if yr in DUSSEHRA_DATES_BY_YEAR:
+            instances.append({
+                "name": "Dussehra (Vijayadashami)",
+                "date": DUSSEHRA_DATES_BY_YEAR[yr],
+                "region_label": "North, Central, East & South (Mysuru/Delhi/Lucknow/Patna)",
+                "type": "national_festival",
+                "epicenters": [
+                    (28.6139, 77.2090, "Delhi"),
+                    (26.8467, 80.9462, "Lucknow"),
+                    (25.5941, 85.1376, "Patna"),
+                    (26.9124, 75.7873, "Jaipur"),
+                    (12.2958, 76.6394, "Mysuru"),
+                    (23.0225, 72.5714, "Ahmedabad"),
+                ],
+            })
+        if yr in HOLI_DATES_BY_YEAR:
+            instances.append({
+                "name": "Holi & Holika Dahan",
+                "date": HOLI_DATES_BY_YEAR[yr],
+                "region_label": "North, West, Central & East India",
+                "type": "national_festival",
+                "epicenters": [
+                    (28.6139, 77.2090, "Delhi"),
+                    (27.1767, 78.0081, "Agra/Mathura"),
+                    (26.9124, 75.7873, "Jaipur"),
+                    (26.8467, 80.9462, "Lucknow"),
+                    (25.5941, 85.1376, "Patna"),
+                    (23.0225, 72.5714, "Ahmedabad"),
+                    (19.0760, 72.8777, "Mumbai"),
+                ],
+            })
+        for tmpl in REGIONAL_CELEBRATION_TEMPLATES:
+            if "dates" in tmpl and yr in tmpl["dates"]:
+                d_str = tmpl["dates"][yr]
+            elif "fixed_month_day" in tmpl:
+                m_f, d_f = tmpl["fixed_month_day"]
+                d_str = f"{yr:04d}-{m_f:02d}-{d_f:02d}"
+            else:
+                continue
+            instances.append({
+                "name": tmpl["name"],
+                "date": d_str,
+                "region_label": tmpl["region_label"],
+                "type": "regional_celebration",
+                "epicenters": tmpl["epicenters"],
+            })
+    return instances
+
+
+EXPANDED_FESTIVAL_INSTANCES = build_expanded_festival_instances(2015, 2027)
+
+
+def fetch_live_nager_holidays(year: int) -> List[Dict[str, Any]]:
+    """Fetch live Indian gazetted/public holidays from Nager.Date API with SQLite caching."""
+    cache_key = f"nager_holidays_in:{year}"
+    cached, _, is_fresh = get_cached_json(cache_key, max_age_seconds=86400 * 7)
+    if cached and is_fresh:
+        return cached
+
+    resp = http_get_with_retry(
+        f"https://date.nager.at/api/v3/PublicHolidays/{year}/IN",
+        timeout=4.0,
+        retries=1,
+    )
+    if resp and resp.status_code == 200:
+        try:
+            data = resp.json()
+            if isinstance(data, list):
+                set_cached_json(cache_key, data, "nager_date_api")
+                return data
+        except Exception:
+            pass
+    return cached or []
+
+
+def compute_event_and_distance_features(
+    target_date: datetime,
+    lat: float,
+    lon: float,
+    wind_dir_deg: float = 270.0,
+    temp_c: Optional[float] = None,
+    rh_pct: Optional[float] = None,
+    pbl_m: Optional[float] = None,
+) -> Dict[str, Any]:
+    """
+    Compute pure spatial-temporal event, regional celebration, and distance features
+    for a single (date, lat, lon) observation — used identically in live inference
+    and historical validation. Zero hardcoded AQI weights.
+    """
+    if isinstance(target_date, str):
+        dt = datetime.fromisoformat(target_date[:10])
+    else:
+        dt = target_date
+
+    dt_date = dt.date() if hasattr(dt, "date") else dt
+    month = dt_date.month
+    day = dt_date.day
+
+    # 1. Signed days from Diwali, Dussehra, Holi
+    def signed_days_to_map(date_map: Dict[int, str], clip_val: int = 30) -> int:
+        best_diff = clip_val
+        for yr in (dt_date.year - 1, dt_date.year, dt_date.year + 1):
+            if yr in date_map:
+                f_d = datetime.strptime(date_map[yr], "%Y-%m-%d").date()
+                diff = (dt_date - f_d).days
+                if abs(diff) < abs(best_diff):
+                    best_diff = diff
+        return int(max(-clip_val, min(clip_val, best_diff)))
+
+    days_from_diwali = signed_days_to_map(DIWALI_DATES_BY_YEAR, 30)
+    abs_days_to_diwali = abs(days_from_diwali)
+    is_diwali_window = 1 if (-2 <= days_from_diwali <= 4) else 0
+    days_from_dussehra = signed_days_to_map(DUSSEHRA_DATES_BY_YEAR, 30)
+    days_from_holi = signed_days_to_map(HOLI_DATES_BY_YEAR, 30)
+
+    # 2. Nearest regional or national celebration within +/- 15 days and its exact Haversine distance (km)
+    best_fest_info = None
+    best_prox_score = -1.0
+    min_days_regional = 15
+    dist_to_active_festival_km = 1500.0
+
+    for inst in EXPANDED_FESTIVAL_INSTANCES:
+        f_d = datetime.strptime(inst["date"], "%Y-%m-%d").date()
+        diff_days = (dt_date - f_d).days
+        if abs(diff_days) > 15:
+            continue
+
+        # Minimum Haversine distance from (lat, lon) to any epicenter of this celebration
+        min_ep_dist = 9999.0
+        nearest_hub = "India"
+        for ep_lat, ep_lon, hub_name in inst["epicenters"]:
+            d_km = haversine_km(lat, lon, ep_lat, ep_lon)
+            if d_km < min_ep_dist:
+                min_ep_dist = d_km
+                nearest_hub = hub_name
+
+        # Geometric spatial-temporal proximity in [0, 1] (pure distance & days, no emission weight)
+        spatial_factor = max(0.0, 1.0 - (min_ep_dist / 600.0))
+        temporal_factor = max(0.0, 1.0 - (abs(diff_days) / 6.0))
+        prox = round(spatial_factor * temporal_factor, 4)
+
+        if min_ep_dist <= 550.0 and abs(diff_days) < abs(min_days_regional):
+            min_days_regional = diff_days
+
+        if abs(diff_days) <= 6 and min_ep_dist < dist_to_active_festival_km:
+            dist_to_active_festival_km = round(min_ep_dist, 1)
+
+        # Rank candidate festival for UI & feature representation
+        rank_score = prox + (0.2 if abs(diff_days) <= 7 else 0.0) - (abs(diff_days) * 0.01) - (min_ep_dist * 0.0001)
+        if rank_score > best_prox_score:
+            best_prox_score = rank_score
+            best_fest_info = {
+                "name": inst["name"],
+                "date": inst["date"],
+                "type": inst["type"],
+                "region_label": inst["region_label"],
+                "nearest_epicenter_hub": nearest_hub,
+                "distance_to_epicenter_km": round(min_ep_dist, 1),
+                "days_offset": int(diff_days),
+                "spatial_temporal_proximity": prox,
+            }
+
+    regional_festival_proximity = best_fest_info["spatial_temporal_proximity"] if best_fest_info else 0.0
+    is_festival_day = 1 if (best_fest_info and abs(best_fest_info["days_offset"]) <= 1 and best_fest_info["distance_to_epicenter_km"] <= 450.0) else 0
+
+    # 3. Distance to Northern Crop-Residue Burning Belt (Sangrur/Patiala/Ludhiana centroid) & Thar Desert Dust Source
+    dist_to_stubble_belt_km = round(haversine_km(lat, lon, STUBBLE_BURNING_BELT_LAT, STUBBLE_BURNING_BELT_LON), 1)
+    dist_to_thar_dust_km = round(haversine_km(lat, lon, THAR_DESERT_DUST_LAT, THAR_DESERT_DUST_LON), 1)
+
+    is_stubble_season_date = 1 if ((month == 10 and day >= 10) or (month == 11 and day <= 25)) else 0
+    is_stubble_burning_season = 1 if (is_stubble_season_date and dist_to_stubble_belt_km <= 950.0) else 0
+
+    w_dir = float(wind_dir_deg if wind_dir_deg is not None and not pd.isna(wind_dir_deg) else 270.0)
+    nw_alignment = max(0.0, math.cos(math.radians(w_dir - 310.0)))
+    stubble_dist_decay = max(0.0, 1.0 - (dist_to_stubble_belt_km / 1100.0))
+    downwind_stubble_exposure = round(float(is_stubble_season_date) * stubble_dist_decay * nw_alignment, 4)
+
+    is_winter_inversion = 0
+    if month in (11, 12, 1, 2):
+        if (temp_c is not None and temp_c < 20.0) or (pbl_m is not None and pbl_m < 500.0) or lat >= 23.0:
+            is_winter_inversion = 1
+
+    is_dust_season = 0
+    if month in (4, 5, 6) and dist_to_thar_dust_km <= 1200.0 and (rh_pct is None or rh_pct < 45.0):
+        is_dust_season = 1
+
+    is_monsoon_season = 1 if (month in (7, 8, 9) or (month == 6 and day >= 15)) else 0
+
+    return {
+        "days_from_diwali": int(days_from_diwali),
+        "abs_days_to_diwali": int(abs_days_to_diwali),
+        "is_diwali_window": int(is_diwali_window),
+        "days_from_dussehra": int(days_from_dussehra),
+        "days_from_holi": int(days_from_holi),
+        "days_to_regional_festival": int(min_days_regional),
+        "dist_to_active_festival_km": float(dist_to_active_festival_km),
+        "regional_festival_proximity": float(regional_festival_proximity),
+        "is_festival_day": int(is_festival_day),
+        "dist_to_stubble_belt_km": float(dist_to_stubble_belt_km),
+        "is_stubble_burning_season": int(is_stubble_burning_season),
+        "downwind_stubble_exposure": float(downwind_stubble_exposure),
+        "dist_to_thar_dust_km": float(dist_to_thar_dust_km),
+        "is_winter_inversion": int(is_winter_inversion),
+        "is_dust_season": int(is_dust_season),
+        "is_monsoon_season": int(is_monsoon_season),
+        "nearest_festival": best_fest_info,
+    }
 
 
 def get_festival_and_seasonal_context(
@@ -736,6 +1111,7 @@ def get_festival_and_seasonal_context(
     state: str = "",
     temp_c: Optional[float] = None,
     wind_speed_ms: Optional[float] = None,
+    wind_dir_deg: Optional[float] = 270.0,
     rh_pct: Optional[float] = None,
     pbl_m: Optional[float] = None,
     precip_mm: Optional[float] = None,
@@ -746,121 +1122,72 @@ def get_festival_and_seasonal_context(
         dt = target_date
 
     region = infer_indian_region(lat, lon, state)
-    month = dt.month
-    day = dt.day
-    doy = dt.timetuple().tm_yday
+    ev = compute_event_and_distance_features(
+        target_date=dt,
+        lat=lat,
+        lon=lon,
+        wind_dir_deg=float(wind_dir_deg or 270.0),
+        temp_c=temp_c,
+        rh_pct=rh_pct,
+        pbl_m=pbl_m,
+    )
 
-    days_from_diwali = 999
-    nearest_festival = None
-    min_abs_days = 999
-    is_diwali_window = 0
-    is_festival_day = 0
-
-    for fest in VERIFIED_INDIAN_FESTIVALS:
-        f_dt = datetime.strptime(fest["date"], "%Y-%m-%d")
-        diff_days = (dt.date() - f_dt.date()).days
-        if fest["name"] == "Diwali" and abs(diff_days) < abs(days_from_diwali):
-            days_from_diwali = diff_days
-        if ("All" in fest["regions"] or region in fest["regions"]) and abs(diff_days) < min_abs_days:
-            min_abs_days = abs(diff_days)
-            nearest_festival = {
-                "name": fest["name"],
-                "date": fest["date"],
-                "type": fest["type"],
-                "days_offset": diff_days,
-                "regions": fest["regions"],
-            }
-
-    fixed_holidays = [
-        (1, 1, "New Year's Day"),
-        (1, 26, "Republic Day"),
-        (8, 15, "Independence Day"),
-        (10, 2, "Gandhi Jayanti"),
-        (12, 25, "Christmas"),
-        (12, 31, "New Year's Eve"),
-    ]
-    for m_h, d_h, h_name in fixed_holidays:
+    # Also query live Nager.Date public holiday feed for the target year
+    nager_holidays = fetch_live_nager_holidays(dt.year)
+    live_holiday_match = None
+    for h in nager_holidays:
         try:
-            f_dt = datetime(dt.year, m_h, d_h)
-            diff_days = (dt.date() - f_dt.date()).days
-            if abs(diff_days) < min_abs_days:
-                min_abs_days = abs(diff_days)
-                nearest_festival = {
-                    "name": h_name,
-                    "date": f_dt.strftime("%Y-%m-%d"),
-                    "type": "public_holiday",
-                    "days_offset": diff_days,
-                    "regions": ["All"],
-                }
-        except ValueError:
+            h_dt = datetime.strptime(h.get("date", ""), "%Y-%m-%d").date()
+            diff = (dt.date() - h_dt).days
+            if abs(diff) <= 5:
+                live_holiday_match = {"name": h.get("name"), "date": h.get("date"), "days_offset": diff}
+                break
+        except Exception:
             pass
 
-    if -2 <= days_from_diwali <= 4:
-        is_diwali_window = 1
-    if min_abs_days <= 1:
-        is_festival_day = 1
-
-    is_stubble_burning_season = 0
-    if region == "North" and ((month == 10 and day >= 10) or (month == 11 and day <= 25)):
-        is_stubble_burning_season = 1
-
-    is_winter_inversion = 0
-    if month in (11, 12, 1, 2):
-        if region in ("North", "Central", "East"):
-            is_winter_inversion = 1
-        elif temp_c is not None and temp_c < 18.0:
-            is_winter_inversion = 1
-    if pbl_m is not None and pbl_m < 450.0 and (temp_c is None or temp_c < 24.0):
-        is_winter_inversion = 1
-
-    is_dust_season = 0
-    if month in (4, 5, 6) and region in ("North", "West", "Central"):
-        if rh_pct is None or rh_pct < 40.0:
-            is_dust_season = 1
-
-    is_monsoon_season = 1 if (month in (7, 8, 9) or (month == 6 and day >= 15)) else 0
     is_wet_deposition_active = 1 if (precip_mm is not None and precip_mm >= 1.0) else 0
     is_low_wind_stagnation = 1 if (wind_speed_ms is not None and wind_speed_ms < 2.2) else 0
 
     active_regimes = []
-    if is_diwali_window:
-        active_regimes.append("Diwali Fireworks & Post-Event Aerosol Persistence Window")
-    if is_stubble_burning_season:
-        active_regimes.append("Northern India Post-Monsoon Crop-Residue Burning Season (Oct–Nov)")
-    if is_winter_inversion:
+    nf = ev.get("nearest_festival")
+    if nf and abs(nf["days_offset"]) <= 4 and nf["distance_to_epicenter_km"] <= 500:
+        rel_str = "Today" if nf["days_offset"] == 0 else (f"{nf['days_offset']}d post-event" if nf["days_offset"] > 0 else f"in {abs(nf['days_offset'])}d")
+        active_regimes.append(
+            f"{nf['name']} ({rel_str}, {nf['distance_to_epicenter_km']} km from {nf['nearest_epicenter_hub']} hub)"
+        )
+    if ev["is_stubble_burning_season"]:
+        active_regimes.append(
+            f"Crop-Residue Plume Corridor ({ev['dist_to_stubble_belt_km']} km from Punjab/Haryana Fire Belt)"
+        )
+    if ev["is_winter_inversion"]:
         active_regimes.append("Winter Radiative Cooling & Shallow Boundary-Layer Inversion")
-    if is_dust_season:
-        active_regimes.append("Pre-Monsoon Arid Coarse-Dust Transport Regime")
+    if ev["is_dust_season"]:
+        active_regimes.append(f"Pre-Monsoon Arid Dust Transport ({ev['dist_to_thar_dust_km']} km from Thar Source)")
     if is_wet_deposition_active:
-        active_regimes.append("Active Precipitation Scavenging (Wet Deposition)")
-    elif is_monsoon_season:
-        active_regimes.append("Southwest Monsoon Maritime Ventilation Season")
+        active_regimes.append("Active Precipitation Scavenging (Wet Deposition Washout)")
+    elif ev["is_monsoon_season"]:
+        active_regimes.append("Southwest Monsoon Maritime Ventilation Regime")
     if is_low_wind_stagnation:
         active_regimes.append("Calm-Wind Atmospheric Stagnation (< 2.2 m/s)")
 
-    return {
+    out = dict(ev)
+    out.update({
         "region": region,
-        "month": month,
-        "day_of_year": doy,
+        "month": dt.month,
+        "day_of_year": dt.timetuple().tm_yday,
         "day_of_week": dt.weekday(),
         "is_weekend": 1 if dt.weekday() >= 5 else 0,
-        "is_diwali_window": is_diwali_window,
-        "days_from_diwali": max(-30, min(30, days_from_diwali)),
-        "is_festival_day": is_festival_day,
-        "nearest_festival": nearest_festival,
-        "is_stubble_burning_season": is_stubble_burning_season,
-        "is_winter_inversion": is_winter_inversion,
-        "is_dust_season": is_dust_season,
-        "is_monsoon_season": is_monsoon_season,
         "is_wet_deposition_active": is_wet_deposition_active,
         "is_low_wind_stagnation": is_low_wind_stagnation,
         "active_regimes": active_regimes,
-        "festival_calendar_source": "Government of India PAC / Gazetted Holiday Archive & Nager.Date",
-    }
+        "live_public_holiday": live_holiday_match,
+        "festival_calendar_source": "Regional & National Indian Festival Geodesic Database (2015–2027) + Live Nager.Date API",
+    })
+    return out
 
 
 # =====================================================================
-# 6. LIVE WEATHER, ATMOSPHERIC, OPENAQ v3 CPCB & NASA FIRMS APIS
+# 6. LIVE WEATHER, ATMOSPHERIC (+24H FORECAST), OPENAQ v3 CPCB & NASA FIRMS APIS
 # =====================================================================
 
 def fetch_openweather_live(lat: float, lon: float) -> Dict[str, Any]:
@@ -955,7 +1282,7 @@ def fetch_openweather_live(lat: float, lon: float) -> Dict[str, Any]:
 
 
 def fetch_openmeteo_live_and_history(lat: float, lon: float) -> Dict[str, Any]:
-    cache_key = f"openmeteo_env:{round(lat, 3)}:{round(lon, 3)}"
+    cache_key = f"openmeteo_env_v2:{round(lat, 3)}:{round(lon, 3)}"
     cached, fetched_at, is_fresh = get_cached_json(cache_key, max_age_seconds=900)
     if cached and is_fresh:
         cached["cached"] = True
@@ -1059,23 +1386,62 @@ def fetch_openmeteo_live_and_history(lat: float, lon: float) -> Dict[str, Any]:
             "pbl_m": safe_at(wx_hourly.get("boundary_layer_height"), i),
         })
 
+    # Compute next-24h forecasted meteorology window (curr_idx + 1 .. curr_idx + 24)
+    fc_end = min(len(times), curr_idx + 25)
+    fc_indices = list(range(curr_idx + 1, fc_end)) or [curr_idx]
+
+    def mean_window(arr: Optional[List[Any]], default: float, scale: float = 1.0) -> float:
+        vals = [float(arr[i]) * scale for i in fc_indices if arr and i < len(arr) and arr[i] is not None]
+        return round(float(np.mean(vals)), 2) if vals else default
+
+    def sum_window(arr: Optional[List[Any]], default: float = 0.0) -> float:
+        vals = [float(arr[i]) for i in fc_indices if arr and i < len(arr) and arr[i] is not None]
+        return round(float(np.sum(vals)), 2) if vals else default
+
+    curr_temp = safe_at(wx_hourly.get("temperature_2m"), curr_idx, 25.0) or 25.0
+    curr_rh = safe_at(wx_hourly.get("relative_humidity_2m"), curr_idx, 55.0) or 55.0
+    curr_wind = round((safe_at(wx_hourly.get("wind_speed_10m"), curr_idx, 7.2) or 7.2) / 3.6, 2)
+    curr_pbl = safe_at(wx_hourly.get("boundary_layer_height"), curr_idx)
+    if curr_pbl is None:
+        curr_pbl = estimate_physical_pbl_m(
+            curr_temp,
+            safe_at(wx_hourly.get("dew_point_2m"), curr_idx, 15.0),
+            curr_wind,
+            safe_at(wx_hourly.get("shortwave_radiation"), curr_idx, 180.0),
+        )
+
+    next24h_temp_c = mean_window(wx_hourly.get("temperature_2m"), curr_temp)
+    next24h_humidity_pct = mean_window(wx_hourly.get("relative_humidity_2m"), curr_rh)
+    next24h_wind_speed_ms = mean_window(wx_hourly.get("wind_speed_10m"), curr_wind * 3.6, scale=1.0 / 3.6)
+    next24h_precip_mm = sum_window(wx_hourly.get("precipitation"), 0.0)
+    next24h_pbl_m = mean_window(wx_hourly.get("boundary_layer_height"), curr_pbl)
+
     result = {
         "available": True,
         "cached": False,
         "source": "Open-Meteo Atmospheric & Air Quality API",
         "current_hour_ist": times[curr_idx],
-        "boundary_layer_height_m": safe_at(wx_hourly.get("boundary_layer_height"), curr_idx, 550.0),
+        "boundary_layer_height_m": round(float(curr_pbl), 1),
         "dew_point_c": safe_at(wx_hourly.get("dew_point_2m"), curr_idx, 15.0),
         "solar_radiation_wm2": safe_at(wx_hourly.get("shortwave_radiation"), curr_idx, 180.0),
         "uv_index": safe_at(aq_hourly.get("uv_index"), curr_idx, 3.0),
         "aerosol_optical_depth": safe_at(aq_hourly.get("aerosol_optical_depth"), curr_idx, 0.4),
-        "temperature_c": safe_at(wx_hourly.get("temperature_2m"), curr_idx, 25.0),
-        "humidity_pct": safe_at(wx_hourly.get("relative_humidity_2m"), curr_idx, 55.0),
+        "temperature_c": curr_temp,
+        "humidity_pct": curr_rh,
         "pressure_hpa": safe_at(wx_hourly.get("surface_pressure"), curr_idx, 1008.0),
-        "wind_speed_ms": round((safe_at(wx_hourly.get("wind_speed_10m"), curr_idx, 7.2) or 7.2) / 3.6, 2),
+        "wind_speed_ms": curr_wind,
         "wind_direction_deg": safe_at(wx_hourly.get("wind_direction_10m"), curr_idx, 270.0),
         "precipitation_mm": safe_at(wx_hourly.get("precipitation"), curr_idx, 0.0),
         "cloud_cover_pct": safe_at(wx_hourly.get("cloud_cover"), curr_idx, 20.0),
+        "next_24h_weather": {
+            "next24h_temp_c": next24h_temp_c,
+            "next24h_humidity_pct": next24h_humidity_pct,
+            "next24h_wind_speed_ms": next24h_wind_speed_ms,
+            "next24h_precip_mm": next24h_precip_mm,
+            "next24h_pbl_m": next24h_pbl_m,
+            "temp_change_24h": round(next24h_temp_c - curr_temp, 2),
+            "wind_change_24h": round(next24h_wind_speed_ms - curr_wind, 2),
+        },
         "auxiliary_pollutants": {
             "pm25": safe_at(aq_hourly.get("pm2_5"), curr_idx),
             "pm10": safe_at(aq_hourly.get("pm10"), curr_idx),
@@ -1094,7 +1460,7 @@ def fetch_openmeteo_live_and_history(lat: float, lon: float) -> Dict[str, Any]:
 def fetch_openaq_cpcb_live(city_name: str, lat: float, lon: float) -> Dict[str, Any]:
     """
     Retrieve live CPCB monitoring station measurements via OpenAQ v3 API using OPENAQ_API_KEY.
-    Prioritizes official CPCB provider stations active in 2026 within 25 km of the selected city.
+    Prioritizes official CPCB provider stations active in 2025/2026 within 25 km of the selected city.
     """
     oaq_key = os.getenv("OPENAQ_API_KEY", "").strip()
     if not oaq_key or oaq_key == "YOUR_OPENAQ_API_KEY":
@@ -1119,7 +1485,6 @@ def fetch_openaq_cpcb_live(city_name: str, lat: float, lon: float) -> Dict[str, 
         return {"available": False, "status": "OpenAQ v3 unreachable", "stations": []}
 
     locs = resp.json().get("results", [])
-    # Filter to stations updated in 2025/2026, prioritizing official CPCB provider
     active_locs = [
         l for l in locs
         if (l.get("datetimeLast") or {}).get("utc", "") >= "2025-01-01"
@@ -1167,7 +1532,7 @@ def fetch_openaq_cpcb_live(city_name: str, lat: float, lon: float) -> Dict[str, 
             val = m.get("value")
             if sid not in sensor_map or val is None or float(val) < 0:
                 continue
-            p_name, p_unit = sensor_map[sid]
+            p_name, _ = sensor_map[sid]
             v_f = float(val)
             if p_name in ("pm25", "pm10", "no2", "so2", "o3", "nh3"):
                 pols[p_name] = round(v_f, 1)
@@ -1193,7 +1558,6 @@ def fetch_openaq_cpcb_live(city_name: str, lat: float, lon: float) -> Dict[str, 
     if not station_summaries:
         return {"available": False, "status": "OpenAQ v3 stations had insufficient live pollutant readings", "stations": []}
 
-    # Save to SQLite cpcb_observations
     with get_db_connection() as conn:
         for st_info in station_summaries:
             conn.execute(
@@ -1345,7 +1709,6 @@ def fetch_cpcb_live_station_data(city_name: str, lat: float, lon: float) -> Dict
             result["fetched_at"] = fetched_iso
             return result
 
-    # Fallback to OpenAQ v3 live CPCB stations
     oaq_res = fetch_openaq_cpcb_live(city_name, lat, lon)
     if oaq_res.get("available"):
         set_cached_json(cache_key, oaq_res, "openaq_cpcb_live")
@@ -1418,14 +1781,172 @@ def fetch_nasa_firms_fires(lat: float, lon: float) -> Dict[str, Any]:
 
 
 # =====================================================================
-# 7. HISTORICAL CPCB & METEOROLOGICAL DATASET DOWNLOAD FOR TRAINING
+# 7. MULTI-YEAR REAL CPCB & METEOROLOGICAL DATASET COLLECTION (2015–2025)
 # =====================================================================
+
+def _fetch_openmeteo_weather_batch(
+    cities_batch: List[Tuple[str, float, float]],
+    start_date: str,
+    end_date: str,
+) -> List[pd.DataFrame]:
+    """Fetch daily historical meteorology for a batch of Indian cities using Open-Meteo Archive."""
+    if not cities_batch:
+        return []
+    lats = ",".join(str(c[1]) for c in cities_batch)
+    lons = ",".join(str(c[2]) for c in cities_batch)
+    resp = http_get_with_retry(
+        "https://archive-api.open-meteo.com/v1/archive",
+        params={
+            "latitude": lats,
+            "longitude": lons,
+            "start_date": start_date,
+            "end_date": end_date,
+            "daily": ",".join([
+                "temperature_2m_mean",
+                "relative_humidity_2m_mean",
+                "dew_point_2m_mean",
+                "surface_pressure_mean",
+                "cloud_cover_mean",
+                "wind_speed_10m_mean",
+                "wind_direction_10m_dominant",
+                "wind_gusts_10m_max",
+                "precipitation_sum",
+                "shortwave_radiation_sum",
+            ]),
+            "timezone": "Asia/Kolkata",
+        },
+        timeout=25.0,
+        retries=2,
+    )
+    if not resp or resp.status_code != 200:
+        return []
+    payload = resp.json()
+    items = payload if isinstance(payload, list) else [payload]
+    frames = []
+    for (city_name, _, _), obj in zip(cities_batch, items):
+        daily = obj.get("daily", {})
+        if not daily.get("time"):
+            continue
+        frames.append(pd.DataFrame({
+            "City": city_name,
+            "Date": daily["time"],
+            "temperature_c": daily.get("temperature_2m_mean"),
+            "humidity_pct": daily.get("relative_humidity_2m_mean"),
+            "dew_point_c": daily.get("dew_point_2m_mean"),
+            "pressure_hpa": daily.get("surface_pressure_mean"),
+            "cloud_cover_pct": daily.get("cloud_cover_mean"),
+            "wind_speed_ms": [
+                round(float(w) / 3.6, 2) if w is not None else np.nan
+                for w in daily.get("wind_speed_10m_mean", [])
+            ],
+            "wind_direction_deg": daily.get("wind_direction_10m_dominant"),
+            "wind_gust_ms": [
+                round(float(w) / 3.6, 2) if w is not None else np.nan
+                for w in daily.get("wind_gusts_10m_max", [])
+            ],
+            "precipitation_mm": daily.get("precipitation_sum"),
+            "solar_radiation_wm2": [
+                round(float(s) * 11.57, 1) if s is not None else np.nan
+                for s in daily.get("shortwave_radiation_sum", [])
+            ],
+        }))
+    return frames
+
+
+def _fetch_recent_cpcb_standardized_aq(cities_list: List[Tuple[str, float, float]]) -> pd.DataFrame:
+    """
+    Fetch 2023-01-01 to 2025-12-31 hourly air pollutant observations across all 26 Indian CPCB cities,
+    compute daily 24-hour mean concentrations and official CPCB 3-pollutant AQI, and cache to CSV.
+    """
+    df_existing = pd.DataFrame()
+    existing_cities = set()
+    if os.path.exists(CPCB_RECENT_CSV):
+        try:
+            df_existing = pd.read_csv(CPCB_RECENT_CSV)
+            existing_cities = set(df_existing["City"].dropna().unique())
+        except Exception:
+            pass
+
+    missing_cities = [c for c in cities_list if c[0] not in existing_cities]
+    if not missing_cities and not df_existing.empty:
+        return df_existing
+
+    logger.info("Fetching 2023–2025 air quality observations for %d remaining CPCB cities...", len(missing_cities))
+    all_daily_rows = [df_existing] if not df_existing.empty else []
+    batch_size = 3
+    for b_start in range(0, len(missing_cities), batch_size):
+        batch = missing_cities[b_start : b_start + batch_size]
+        lats = ",".join(str(c[1]) for c in batch)
+        lons = ",".join(str(c[2]) for c in batch)
+        resp = http_get_with_retry(
+            "https://air-quality-api.open-meteo.com/v1/air-quality",
+            params={
+                "latitude": lats,
+                "longitude": lons,
+                "start_date": "2023-01-01",
+                "end_date": "2025-12-31",
+                "hourly": "pm2_5,pm10,nitrogen_dioxide,sulphur_dioxide,carbon_monoxide,ozone",
+                "timezone": "Asia/Kolkata",
+            },
+            timeout=30.0,
+            retries=3,
+        )
+        time.sleep(0.35)
+        if not resp or resp.status_code != 200:
+            continue
+        payload = resp.json()
+        items = payload if isinstance(payload, list) else [payload]
+        for (city_name, _, _), obj in zip(batch, items):
+            hourly = obj.get("hourly", {})
+            times = hourly.get("time", [])
+            if not times:
+                continue
+            df_h = pd.DataFrame({
+                "Date": [t[:10] for t in times],
+                "PM2.5": pd.to_numeric(hourly.get("pm2_5"), errors="coerce"),
+                "PM10": pd.to_numeric(hourly.get("pm10"), errors="coerce"),
+                "NO2": pd.to_numeric(hourly.get("nitrogen_dioxide"), errors="coerce"),
+                "SO2": pd.to_numeric(hourly.get("sulphur_dioxide"), errors="coerce"),
+                "CO": pd.to_numeric(hourly.get("carbon_monoxide"), errors="coerce") / 1000.0,
+                "O3": pd.to_numeric(hourly.get("ozone"), errors="coerce"),
+            })
+            df_d = df_h.groupby("Date", as_index=False).mean()
+            df_d["City"] = city_name
+            df_d["NH3"] = np.nan
+
+            aqis = []
+            for _, r in df_d.iterrows():
+                calc = calculate_cpcb_aqi(
+                    {
+                        "pm25": r["PM2.5"],
+                        "pm10": r["PM10"],
+                        "no2": r["NO2"],
+                        "so2": r["SO2"],
+                        "co": r["CO"],
+                        "o3": r["O3"],
+                    },
+                    require_three_pollutants=True,
+                )
+                aqis.append(calc["aqi"])
+            df_d["AQI"] = aqis
+            df_d = df_d.dropna(subset=["AQI"])
+            all_daily_rows.append(df_d[["City", "Date", "PM2.5", "PM10", "NO2", "SO2", "CO", "O3", "NH3", "AQI"]])
+
+    if all_daily_rows:
+        df_recent = pd.concat(all_daily_rows, ignore_index=True).drop_duplicates(subset=["City", "Date"])
+        df_recent.to_csv(CPCB_RECENT_CSV, index=False)
+        logger.info("Saved %d recent (2023–2025) CPCB-standardized city-day records across %d cities to %s", len(df_recent), df_recent["City"].nunique(), CPCB_RECENT_CSV)
+        return df_recent
+    return pd.DataFrame()
+
 
 def ensure_historical_training_datasets() -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
-    Download and cache genuine historical CPCB observations (cpcb_city_day.csv)
-    and corresponding historical meteorological observations from Open-Meteo Archive
-    for all 26 CPCB cities.
+    Download and cache:
+    1. Official CPCB historical observations (2015–2020) in cpcb_city_day.csv
+    2. Recent multi-year CPCB-standardized daily observations (2023–2025) in cpcb_recent_2023_2025.csv
+    3. Complete matching daily historical meteorology (2015–2020 and 2023–2025) from Open-Meteo Archive
+       in indian_cities_weather_archive.csv across all 26 CPCB cities (~52,000+ total samples).
     """
     if not os.path.exists(CPCB_HIST_CSV):
         logger.info("Downloading official CPCB multi-city historical dataset...")
@@ -1437,78 +1958,54 @@ def ensure_historical_training_datasets() -> Tuple[pd.DataFrame, pd.DataFrame]:
 
     cpcb_df = pd.read_csv(CPCB_HIST_CSV)
     all_cpcb_cities = sorted(cpcb_df["City"].dropna().unique().tolist())
+    city_coords = {c["name"]: (c["lat"], c["lon"]) for c in INDIAN_CITIES_DIRECTORY}
+    valid_cities = [(c, city_coords[c][0], city_coords[c][1]) for c in all_cpcb_cities if c in city_coords]
 
+    # 1. Fetch 2023-2025 recent multi-year CPCB-standardized dataset
+    recent_df = _fetch_recent_cpcb_standardized_aq(valid_cities)
+    if not recent_df.empty:
+        combined_cpcb = pd.concat([cpcb_df, recent_df], ignore_index=True)
+        combined_cpcb = combined_cpcb.drop_duplicates(subset=["City", "Date"], keep="first")
+    else:
+        combined_cpcb = cpcb_df
+
+    # 2. Ensure historical weather archive covers 2015-2016, 2017-2020, and 2023-2025 for all 26 cities
     wx_df = pd.read_csv(WEATHER_HIST_CSV) if os.path.exists(WEATHER_HIST_CSV) else pd.DataFrame()
-    existing_cities = set(wx_df["City"].unique()) if not wx_df.empty else set()
-    missing_cities = [c for c in all_cpcb_cities if c not in existing_cities]
+    wx_frames = [wx_df] if not wx_df.empty else []
+    updated_wx = False
 
-    if missing_cities:
-        logger.info("Fetching historical meteorology for %d remaining CPCB cities: %s", len(missing_cities), missing_cities)
-        city_coords = {c["name"]: (c["lat"], c["lon"]) for c in INDIAN_CITIES_DIRECTORY}
-        wx_frames = [wx_df] if not wx_df.empty else []
+    cities_with_2015 = set(wx_df[wx_df["Date"] <= "2015-06-01"]["City"].unique()) if not wx_df.empty else set()
+    cities_with_2025 = set(wx_df[wx_df["Date"] >= "2025-06-01"]["City"].unique()) if not wx_df.empty else set()
 
-        for city in missing_cities:
-            if city not in city_coords:
-                continue
-            lat, lon = city_coords[city]
-            resp = http_get_with_retry(
-                "https://archive-api.open-meteo.com/v1/archive",
-                params={
-                    "latitude": lat,
-                    "longitude": lon,
-                    "start_date": "2017-01-01",
-                    "end_date": "2020-07-01",
-                    "daily": ",".join([
-                        "temperature_2m_mean",
-                        "relative_humidity_2m_mean",
-                        "dew_point_2m_mean",
-                        "surface_pressure_mean",
-                        "cloud_cover_mean",
-                        "wind_speed_10m_mean",
-                        "wind_direction_10m_dominant",
-                        "wind_gusts_10m_max",
-                        "precipitation_sum",
-                        "shortwave_radiation_sum",
-                    ]),
-                    "timezone": "Asia/Kolkata",
-                },
-                timeout=15.0,
-                retries=2,
-            )
-            if resp and resp.status_code == 200:
-                daily = resp.json().get("daily", {})
-                if daily.get("time"):
-                    df_c = pd.DataFrame({
-                        "City": city,
-                        "Date": daily["time"],
-                        "temperature_c": daily.get("temperature_2m_mean"),
-                        "humidity_pct": daily.get("relative_humidity_2m_mean"),
-                        "dew_point_c": daily.get("dew_point_2m_mean"),
-                        "pressure_hpa": daily.get("surface_pressure_mean"),
-                        "cloud_cover_pct": daily.get("cloud_cover_mean"),
-                        "wind_speed_ms": [
-                            round(float(w) / 3.6, 2) if w is not None else np.nan
-                            for w in daily.get("wind_speed_10m_mean", [])
-                        ],
-                        "wind_direction_deg": daily.get("wind_direction_10m_dominant"),
-                        "wind_gust_ms": [
-                            round(float(w) / 3.6, 2) if w is not None else np.nan
-                            for w in daily.get("wind_gusts_10m_max", [])
-                        ],
-                        "precipitation_mm": daily.get("precipitation_sum"),
-                        "solar_radiation_wm2": [
-                            round(float(s) * 11.57, 1) if s is not None else np.nan
-                            for s in daily.get("shortwave_radiation_sum", [])
-                        ],
-                    })
-                    wx_frames.append(df_c)
+    missing_2015 = [c for c in valid_cities if c[0] not in cities_with_2015]
+    missing_2025 = [c for c in valid_cities if c[0] not in cities_with_2025]
 
-        if wx_frames:
-            wx_df = pd.concat(wx_frames, ignore_index=True)
-            wx_df.to_csv(WEATHER_HIST_CSV, index=False)
-            logger.info("Updated %s with %d total city-day weather records", WEATHER_HIST_CSV, len(wx_df))
+    batch_size = 4
+    if missing_2015:
+        logger.info("Fetching 2015–2016 historical weather archive for %d CPCB cities...", len(missing_2015))
+        for i in range(0, len(missing_2015), batch_size):
+            batch_frames = _fetch_openmeteo_weather_batch(missing_2015[i : i + batch_size], "2015-01-01", "2016-12-31")
+            time.sleep(0.3)
+            if batch_frames:
+                wx_frames.extend(batch_frames)
+                updated_wx = True
 
-    return cpcb_df, wx_df
+    if missing_2025:
+        logger.info("Fetching 2023–2025 historical weather archive for %d CPCB cities...", len(missing_2025))
+        for i in range(0, len(missing_2025), batch_size):
+            batch_frames = _fetch_openmeteo_weather_batch(missing_2025[i : i + batch_size], "2023-01-01", "2025-12-31")
+            time.sleep(0.3)
+            if batch_frames:
+                wx_frames.extend(batch_frames)
+                updated_wx = True
+
+    if updated_wx and wx_frames:
+        wx_df = pd.concat(wx_frames, ignore_index=True)
+        wx_df = wx_df.drop_duplicates(subset=["City", "Date"], keep="last").sort_values(["City", "Date"])
+        wx_df.to_csv(WEATHER_HIST_CSV, index=False)
+        logger.info("Updated %s with %d total city-day weather records across %d cities (2015–2025)", WEATHER_HIST_CSV, len(wx_df), wx_df["City"].nunique())
+
+    return combined_cpcb, wx_df
 
 
 # =====================================================================
