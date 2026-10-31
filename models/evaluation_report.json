@@ -1,8 +1,8 @@
 {
-  "model_version": "airshield-stackedensembleregressor-v3.0",
-  "selected_model": "StackedEnsembleRegressor",
-  "trained_at_utc": "2026-10-31T09:08:04.138999Z",
-  "training_duration_sec": 104.37,
+  "model_version": "airshield-histgradientboostingregressor-v3.0",
+  "selected_model": "HistGradientBoostingRegressor",
+  "trained_at_utc": "2026-10-31T19:12:50.273381Z",
+  "training_duration_sec": 98.08,
   "dataset_summary": {
     "primary_source": "Official CPCB Multi-City Daily AQI Dataset (2015\u20132020) + CPCB-Standardized Multi-Year Archive (2023\u20132025) + Open-Meteo Historical Meteorology",
     "total_verified_samples": 53178,
@@ -54,30 +54,30 @@
   },
   "selected_model_metrics": {
     "train": {
-      "mae": 14.16,
-      "rmse": 22.17,
-      "r2": 0.9398,
-      "category_accuracy_pct": 81.2,
-      "macro_f1": 0.7807,
-      "weighted_f1": 0.8118
+      "mae": 15.92,
+      "rmse": 25.04,
+      "r2": 0.9232,
+      "category_accuracy_pct": 79.32,
+      "macro_f1": 0.7535,
+      "weighted_f1": 0.7929
     },
     "validation": {
-      "mae": 15.26,
-      "rmse": 25.25,
-      "r2": 0.8533,
-      "category_accuracy_pct": 78.7,
-      "macro_f1": 0.5642,
-      "weighted_f1": 0.7861
+      "mae": 14.83,
+      "rmse": 24.3,
+      "r2": 0.8641,
+      "category_accuracy_pct": 79.0,
+      "macro_f1": 0.5886,
+      "weighted_f1": 0.7902
     },
     "test": {
-      "mae": 16.43,
-      "rmse": 29.44,
-      "r2": 0.8495,
-      "category_accuracy_pct": 78.29,
-      "macro_f1": 0.5358,
-      "weighted_f1": 0.7782
+      "mae": 16.22,
+      "rmse": 29.33,
+      "r2": 0.8506,
+      "category_accuracy_pct": 78.71,
+      "macro_f1": 0.5582,
+      "weighted_f1": 0.7833
     },
-    "description": "Supervised StackedEnsembleRegressor trained on 76 zero-leakage features"
+    "description": "Supervised HistGradientBoostingRegressor trained on 76 zero-leakage features"
   },
   "candidate_benchmarks": {
     "PersistenceBaseline": {
@@ -109,129 +109,129 @@
     },
     "CatBoostRegressor": {
       "train": {
-        "mae": 16.68,
-        "rmse": 25.93,
-        "r2": 0.9177,
-        "category_accuracy_pct": 78.44,
-        "macro_f1": 0.7428,
-        "weighted_f1": 0.7843
+        "mae": 16.52,
+        "rmse": 25.63,
+        "r2": 0.9196,
+        "category_accuracy_pct": 78.53,
+        "macro_f1": 0.7449,
+        "weighted_f1": 0.7852
       },
       "validation": {
-        "mae": 15.36,
-        "rmse": 25.22,
-        "r2": 0.8537,
-        "category_accuracy_pct": 78.5,
-        "macro_f1": 0.5625,
-        "weighted_f1": 0.7841
+        "mae": 14.87,
+        "rmse": 24.14,
+        "r2": 0.866,
+        "category_accuracy_pct": 79.09,
+        "macro_f1": 0.5845,
+        "weighted_f1": 0.791
       },
       "test": {
-        "mae": 16.66,
-        "rmse": 29.76,
-        "r2": 0.8462,
-        "category_accuracy_pct": 78.06,
-        "macro_f1": 0.5344,
-        "weighted_f1": 0.7763
+        "mae": 16.29,
+        "rmse": 29.1,
+        "r2": 0.8529,
+        "category_accuracy_pct": 78.48,
+        "macro_f1": 0.5525,
+        "weighted_f1": 0.7807
       },
       "description": "Supervised CatBoostRegressor trained on 76 zero-leakage features"
     },
     "HistGradientBoostingRegressor": {
       "train": {
-        "mae": 16.19,
-        "rmse": 25.5,
-        "r2": 0.9204,
-        "category_accuracy_pct": 79.12,
-        "macro_f1": 0.7515,
-        "weighted_f1": 0.7909
+        "mae": 15.92,
+        "rmse": 25.04,
+        "r2": 0.9232,
+        "category_accuracy_pct": 79.32,
+        "macro_f1": 0.7535,
+        "weighted_f1": 0.7929
       },
       "validation": {
-        "mae": 15.31,
-        "rmse": 25.22,
-        "r2": 0.8536,
-        "category_accuracy_pct": 78.75,
-        "macro_f1": 0.5748,
-        "weighted_f1": 0.7871
+        "mae": 14.83,
+        "rmse": 24.3,
+        "r2": 0.8641,
+        "category_accuracy_pct": 79.0,
+        "macro_f1": 0.5886,
+        "weighted_f1": 0.7902
       },
       "test": {
-        "mae": 16.67,
-        "rmse": 30.14,
-        "r2": 0.8422,
-        "category_accuracy_pct": 78.36,
-        "macro_f1": 0.5442,
-        "weighted_f1": 0.7796
+        "mae": 16.22,
+        "rmse": 29.33,
+        "r2": 0.8506,
+        "category_accuracy_pct": 78.71,
+        "macro_f1": 0.5582,
+        "weighted_f1": 0.7833
       },
       "description": "Supervised HistGradientBoostingRegressor trained on 76 zero-leakage features"
     },
     "ExtraTreesRegressor": {
       "train": {
-        "mae": 11.64,
-        "rmse": 18.21,
-        "r2": 0.9594,
-        "category_accuracy_pct": 84.03,
-        "macro_f1": 0.8183,
-        "weighted_f1": 0.84
+        "mae": 11.49,
+        "rmse": 17.95,
+        "r2": 0.9606,
+        "category_accuracy_pct": 84.25,
+        "macro_f1": 0.8216,
+        "weighted_f1": 0.8422
       },
       "validation": {
-        "mae": 15.43,
-        "rmse": 25.66,
-        "r2": 0.8485,
-        "category_accuracy_pct": 78.53,
-        "macro_f1": 0.5647,
-        "weighted_f1": 0.7843
+        "mae": 15.18,
+        "rmse": 25.11,
+        "r2": 0.855,
+        "category_accuracy_pct": 78.88,
+        "macro_f1": 0.5769,
+        "weighted_f1": 0.7884
       },
       "test": {
-        "mae": 16.45,
-        "rmse": 29.32,
-        "r2": 0.8507,
+        "mae": 16.36,
+        "rmse": 29.27,
+        "r2": 0.8512,
         "category_accuracy_pct": 78.25,
-        "macro_f1": 0.5307,
-        "weighted_f1": 0.7774
+        "macro_f1": 0.5346,
+        "weighted_f1": 0.7778
       },
       "description": "Supervised ExtraTreesRegressor trained on 76 zero-leakage features"
     },
     "StackedEnsembleRegressor": {
       "train": {
-        "mae": 14.16,
-        "rmse": 22.17,
-        "r2": 0.9398,
-        "category_accuracy_pct": 81.2,
-        "macro_f1": 0.7807,
-        "weighted_f1": 0.8118
+        "mae": 13.97,
+        "rmse": 21.84,
+        "r2": 0.9416,
+        "category_accuracy_pct": 81.4,
+        "macro_f1": 0.7822,
+        "weighted_f1": 0.8137
       },
       "validation": {
-        "mae": 15.26,
-        "rmse": 25.25,
-        "r2": 0.8533,
-        "category_accuracy_pct": 78.7,
-        "macro_f1": 0.5642,
-        "weighted_f1": 0.7861
+        "mae": 14.84,
+        "rmse": 24.42,
+        "r2": 0.8628,
+        "category_accuracy_pct": 79.15,
+        "macro_f1": 0.5854,
+        "weighted_f1": 0.7916
       },
       "test": {
-        "mae": 16.43,
-        "rmse": 29.44,
-        "r2": 0.8495,
-        "category_accuracy_pct": 78.29,
-        "macro_f1": 0.5358,
-        "weighted_f1": 0.7782
+        "mae": 16.14,
+        "rmse": 29.01,
+        "r2": 0.8539,
+        "category_accuracy_pct": 78.55,
+        "macro_f1": 0.5468,
+        "weighted_f1": 0.7812
       },
       "description": "Supervised StackedEnsembleRegressor trained on 76 zero-leakage features"
     }
   },
   "ablation_study": {
     "with_weather_and_festival_context": {
-      "val_mae": 15.26,
-      "val_rmse": 25.25,
-      "test_mae": 16.43,
-      "test_rmse": 29.44,
-      "test_r2": 0.8495,
-      "test_category_accuracy_pct": 78.29
+      "val_mae": 14.83,
+      "val_rmse": 24.3,
+      "test_mae": 16.22,
+      "test_rmse": 29.33,
+      "test_r2": 0.8506,
+      "test_category_accuracy_pct": 78.71
     },
     "pollutants_plus_weather_without_festivals": {
-      "val_mae": 15.89,
-      "val_rmse": 26.19,
-      "test_mae": 17.22,
-      "test_rmse": 30.79,
-      "test_r2": 0.8354,
-      "test_category_accuracy_pct": 77.89
+      "val_mae": 15.29,
+      "val_rmse": 25.01,
+      "test_mae": 16.94,
+      "test_rmse": 30.37,
+      "test_r2": 0.8398,
+      "test_category_accuracy_pct": 78.31
     },
     "pollutant_lags_only_without_context": {
       "val_mae": 16.19,
@@ -244,198 +244,198 @@
     "festival_window_test_subset": {
       "festival_window_samples": 960,
       "pollutant_only_mae": 17.94,
-      "weather_only_mae": 17.95,
-      "full_with_regional_festival_distance_mae": 17.34,
-      "festival_window_mae_gain": 0.6,
-      "festival_window_cat_acc_pct": 73.44
+      "weather_only_mae": 17.17,
+      "full_with_regional_festival_distance_mae": 17.33,
+      "festival_window_mae_gain": 0.61,
+      "festival_window_cat_acc_pct": 75.21
     },
-    "context_mae_improvement": 1.11,
-    "context_rmse_improvement": 1.89
+    "context_mae_improvement": 1.32,
+    "context_rmse_improvement": 2.0
   },
   "feature_importances": [
     {
       "feature": "current_aqi",
-      "importance_pct": 29.05
+      "importance_pct": 28.61
     },
     {
       "feature": "pm25",
-      "importance_pct": 9.79
+      "importance_pct": 10.86
     },
     {
       "feature": "sub_pm25",
-      "importance_pct": 9.06
+      "importance_pct": 8.16
     },
     {
       "feature": "aqi_ewm_3",
-      "importance_pct": 6.53
-    },
-    {
-      "feature": "aqi_ewm_14",
-      "importance_pct": 5.2
+      "importance_pct": 6.42
     },
     {
       "feature": "aqi_ewm_7",
-      "importance_pct": 5.11
+      "importance_pct": 5.52
+    },
+    {
+      "feature": "aqi_ewm_14",
+      "importance_pct": 4.88
     },
     {
       "feature": "co",
-      "importance_pct": 2.82
+      "importance_pct": 2.97
     },
     {
       "feature": "pm25_lag_1",
-      "importance_pct": 2.47
-    },
-    {
-      "feature": "aqi_delta_24h",
-      "importance_pct": 1.71
-    },
-    {
-      "feature": "sub_pm10",
-      "importance_pct": 1.64
+      "importance_pct": 2.28
     },
     {
       "feature": "next24h_wind_speed_ms",
-      "importance_pct": 1.59
-    },
-    {
-      "feature": "aqi_roll_max_3",
-      "importance_pct": 1.52
+      "importance_pct": 2.1
     },
     {
       "feature": "pm10",
-      "importance_pct": 1.42
+      "importance_pct": 1.69
+    },
+    {
+      "feature": "sub_pm10",
+      "importance_pct": 1.69
+    },
+    {
+      "feature": "aqi_delta_24h",
+      "importance_pct": 1.65
     },
     {
       "feature": "aqi_roll_mean_7",
-      "importance_pct": 1.33
+      "importance_pct": 1.4
     },
     {
-      "feature": "aqi_roll_min_3",
-      "importance_pct": 1.31
-    },
-    {
-      "feature": "aqi_roll_mean_3",
-      "importance_pct": 1.18
+      "feature": "aqi_roll_max_3",
+      "importance_pct": 1.15
     },
     {
       "feature": "temp_change_24h",
-      "importance_pct": 1.06
+      "importance_pct": 1.09
     },
     {
       "feature": "precipitation_mm",
-      "importance_pct": 0.92
+      "importance_pct": 1.07
     },
     {
-      "feature": "city_month_train_median_aqi",
-      "importance_pct": 0.87
+      "feature": "aqi_roll_mean_3",
+      "importance_pct": 1.03
+    },
+    {
+      "feature": "aqi_roll_min_3",
+      "importance_pct": 1.02
     },
     {
       "feature": "pm10_lag_1",
-      "importance_pct": 0.84
+      "importance_pct": 0.97
+    },
+    {
+      "feature": "city_train_median_aqi",
+      "importance_pct": 0.82
     }
   ],
   "uncertainty_quantiles": {
-    "q80_abs_error": 21.8,
-    "q90_abs_error": 37.7
+    "q80_abs_error": 21.5,
+    "q90_abs_error": 36.1
   },
   "city_generalization": [
     {
       "city": "Bhopal",
       "samples": 307,
-      "mae": 8.38,
-      "rmse": 12.02,
-      "category_accuracy_pct": 85.67
+      "mae": 8.56,
+      "rmse": 12.15,
+      "category_accuracy_pct": 86.32
     },
     {
       "city": "Brajrajnagar",
       "samples": 307,
-      "mae": 16.4,
-      "rmse": 25.33,
-      "category_accuracy_pct": 85.34
+      "mae": 16.24,
+      "rmse": 24.35,
+      "category_accuracy_pct": 85.02
     },
     {
       "city": "Chandigarh",
       "samples": 307,
-      "mae": 13.38,
-      "rmse": 19.14,
-      "category_accuracy_pct": 78.83
+      "mae": 13.41,
+      "rmse": 18.56,
+      "category_accuracy_pct": 80.13
     },
     {
       "city": "Chennai",
       "samples": 307,
-      "mae": 13.39,
-      "rmse": 18.39,
-      "category_accuracy_pct": 76.87
+      "mae": 13.34,
+      "rmse": 18.35,
+      "category_accuracy_pct": 78.5
     },
     {
       "city": "Coimbatore",
       "samples": 307,
-      "mae": 6.06,
-      "rmse": 8.3,
-      "category_accuracy_pct": 83.71
+      "mae": 6.07,
+      "rmse": 8.46,
+      "category_accuracy_pct": 83.06
     },
     {
       "city": "Delhi",
       "samples": 307,
-      "mae": 48.38,
-      "rmse": 66.33,
-      "category_accuracy_pct": 50.49
+      "mae": 48.4,
+      "rmse": 67.44,
+      "category_accuracy_pct": 53.75
     },
     {
       "city": "Ernakulam",
       "samples": 307,
-      "mae": 6.01,
-      "rmse": 8.53,
-      "category_accuracy_pct": 89.9
+      "mae": 6.16,
+      "rmse": 8.6,
+      "category_accuracy_pct": 89.25
     },
     {
       "city": "Gurugram",
       "samples": 307,
-      "mae": 63.64,
-      "rmse": 80.82,
-      "category_accuracy_pct": 37.13
+      "mae": 61.43,
+      "rmse": 80.74,
+      "category_accuracy_pct": 40.07
     },
     {
       "city": "Guwahati",
       "samples": 307,
-      "mae": 6.9,
-      "rmse": 10.51,
-      "category_accuracy_pct": 91.21
+      "mae": 6.77,
+      "rmse": 10.74,
+      "category_accuracy_pct": 90.23
     },
     {
       "city": "Hyderabad",
       "samples": 307,
-      "mae": 9.03,
-      "rmse": 12.48,
-      "category_accuracy_pct": 84.69
+      "mae": 8.51,
+      "rmse": 11.87,
+      "category_accuracy_pct": 84.04
     },
     {
       "city": "Jaipur",
       "samples": 307,
-      "mae": 20.96,
-      "rmse": 31.01,
-      "category_accuracy_pct": 75.9
+      "mae": 21.3,
+      "rmse": 31.45,
+      "category_accuracy_pct": 74.92
     },
     {
       "city": "Jorapokhar",
       "samples": 307,
-      "mae": 28.37,
-      "rmse": 37.28,
-      "category_accuracy_pct": 66.78
+      "mae": 26.64,
+      "rmse": 35.12,
+      "category_accuracy_pct": 69.71
     },
     {
       "city": "Kochi",
       "samples": 307,
-      "mae": 6.17,
-      "rmse": 8.68,
-      "category_accuracy_pct": 89.58
+      "mae": 6.13,
+      "rmse": 8.56,
+      "category_accuracy_pct": 88.93
     },
     {
       "city": "Kolkata",
       "samples": 307,
-      "mae": 21.67,
-      "rmse": 30.85,
-      "category_accuracy_pct": 72.96
+      "mae": 20.1,
+      "rmse": 29.88,
+      "category_accuracy_pct": 75.57
     }
   ]
 }

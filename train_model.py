@@ -805,7 +805,7 @@ def train_and_evaluate_pipeline() -> Dict[str, Any]:
         "evaluation_report": evaluation_report,
     }
 
-    joblib.dump(artifact_bundle, MODEL_ARTIFACT_PATH)
+    joblib.dump(artifact_bundle, MODEL_ARTIFACT_PATH, compress=3)
     with open(EVAL_REPORT_PATH, "w", encoding="utf-8") as f:
         json.dump(evaluation_report, f, indent=2)
 

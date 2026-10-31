@@ -4,12 +4,13 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "PYTHONPATH=.pylibs python3 app.py",
-    "start": "PYTHONPATH=.pylibs python3 app.py",
-    "build": "PYTHONPATH=.pylibs python3 -m py_compile app.py data_sources.py train_model.py predictor.py && vite build",
-    "preview": "PYTHONPATH=.pylibs python3 app.py",
+    "postinstall": "test -d .pylibs/flask || (curl -sS https://bootstrap.pypa.io/get-pip.py | python3 - --target=.pylibs && PYTHONPATH=.pylibs python3 -m pip install --target=.pylibs -r requirements.txt)",
+    "dev": "(test -d .pylibs/flask || (curl -sS https://bootstrap.pypa.io/get-pip.py | python3 - --target=.pylibs && PYTHONPATH=.pylibs python3 -m pip install --target=.pylibs -r requirements.txt)) && PYTHONPATH=.pylibs python3 app.py",
+    "start": "(test -d .pylibs/flask || (curl -sS https://bootstrap.pypa.io/get-pip.py | python3 - --target=.pylibs && PYTHONPATH=.pylibs python3 -m pip install --target=.pylibs -r requirements.txt)) && PYTHONPATH=.pylibs python3 app.py",
+    "build": "(test -d .pylibs/flask || (curl -sS https://bootstrap.pypa.io/get-pip.py | python3 - --target=.pylibs && PYTHONPATH=.pylibs python3 -m pip install --target=.pylibs -r requirements.txt)) && PYTHONPATH=.pylibs python3 -m py_compile app.py data_sources.py train_model.py predictor.py && vite build",
+    "preview": "(test -d .pylibs/flask || (curl -sS https://bootstrap.pypa.io/get-pip.py | python3 - --target=.pylibs && PYTHONPATH=.pylibs python3 -m pip install --target=.pylibs -r requirements.txt)) && PYTHONPATH=.pylibs python3 app.py",
     "clean": "rm -rf dist server.js",
-    "lint": "PYTHONPATH=.pylibs python3 -m py_compile app.py data_sources.py train_model.py predictor.py && tsc --noEmit"
+    "lint": "(test -d .pylibs/flask || (curl -sS https://bootstrap.pypa.io/get-pip.py | python3 - --target=.pylibs && PYTHONPATH=.pylibs python3 -m pip install --target=.pylibs -r requirements.txt)) && PYTHONPATH=.pylibs python3 -m py_compile app.py data_sources.py train_model.py predictor.py && tsc --noEmit"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

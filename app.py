@@ -34,7 +34,7 @@ from predictor import (
     predict_city_aqi_24h,
     get_evaluation_report,
 )
-from train_model import train_and_evaluate_pipeline
+from train_model import FEATURE_COLUMNS, train_and_evaluate_pipeline
 
 load_dotenv(override=False)
 
@@ -48,11 +48,19 @@ app = Flask(__name__)
 
 
 def ensure_model_ready() -> None:
-    """Ensure trained model artifact exists at startup; if missing, train once automatically."""
+    """Ensure trained model artifact exists and matches current 76-feature schema at startup."""
     if not os.path.exists(MODEL_ARTIFACT_PATH):
         logger.info("Trained model artifact not found. Training initial model on CPCB dataset...")
         train_and_evaluate_pipeline()
-    load_model_bundle()
+    bundle = load_model_bundle()
+    report = get_evaluation_report()
+    if (
+        bundle.get("feature_columns") != FEATURE_COLUMNS
+        or bundle.get("model_version") != report.get("model_version")
+    ):
+        logger.info("Synchronizing model artifact with evaluation report (%d features)...", len(FEATURE_COLUMNS))
+        train_and_evaluate_pipeline()
+        load_model_bundle(force_reload=True)
 
 
 # =====================================================================
