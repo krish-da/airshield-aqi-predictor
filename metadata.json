@@ -1,0 +1,6 @@
+{
+  "name": "AirShield — Indian AQI Threshold Breach Predictor",
+  "description": "Data-driven 24-hour Indian CPCB Air Quality Index (AQI) forecasting and threshold-breach prediction system using real meteorological, atmospheric, and seasonal context.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
