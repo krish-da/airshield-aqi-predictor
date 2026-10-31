@@ -519,7 +519,23 @@ def predict_city_aqi_24h(
         "is_diwali_window": context["is_diwali_window"],
         "days_from_diwali": context["days_from_diwali"],
         "is_festival_day": context["is_festival_day"],
+        "festival_emission_weight": (
+            1.0 if abs(int(context["days_from_diwali"])) == 0
+            else (0.85 if abs(int(context["days_from_diwali"])) == 1
+                  else (0.55 if abs(int(context["days_from_diwali"])) <= 3
+                        else (0.45 if context["is_festival_day"] else 0.0)))
+        ),
+        "post_diwali_decay": (
+            math.exp(-float(context["days_from_diwali"]) / 2.5)
+            * (2.5 / max(float(weather_merged["wind_speed_ms"] or 2.2), 0.8))
+            if 0 <= int(context["days_from_diwali"]) <= 6
+            else 0.0
+        ),
         "is_stubble_burning_season": context["is_stubble_burning_season"],
+        "stubble_nw_transport_index": (
+            float(context["is_stubble_burning_season"])
+            * max(0.0, math.cos(math.radians(float(weather_merged["wind_direction_deg"] or 300.0) - 315.0)))
+        ),
         "is_winter_inversion": context["is_winter_inversion"],
         "is_dust_season": context["is_dust_season"],
         "is_monsoon_season": context["is_monsoon_season"],

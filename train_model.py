@@ -109,7 +109,10 @@ FEATURE_COLUMNS: List[str] = [
     "is_diwali_window",
     "days_from_diwali",
     "is_festival_day",
+    "festival_emission_weight",
+    "post_diwali_decay",
     "is_stubble_burning_season",
+    "stubble_nw_transport_index",
     "is_winter_inversion",
     "is_dust_season",
     "is_monsoon_season",
@@ -293,11 +296,35 @@ def prepare_engineered_dataset() -> pd.DataFrame:
     df["is_diwali_window"] = ((df["days_from_diwali"] >= -2) & (df["days_from_diwali"] <= 4)).astype(int)
     df["is_festival_day"] = (
         df["Date"].isin(all_fest_dates)
-        | ((df["Date"].dt.month == 1) & (df["Date"].dt.day.isin([1, 26])))
+        | ((df["Date"].dt.month == 1) & (df["Date"].dt.day.isin([1, 13, 14, 26])))
         | ((df["Date"].dt.month == 8) & (df["Date"].dt.day == 15))
         | ((df["Date"].dt.month == 10) & (df["Date"].dt.day == 2))
+        | ((df["Date"].dt.month == 11) & (df["Date"].dt.day.isin([4, 12, 15, 19, 23, 27, 30])))
         | ((df["Date"].dt.month == 12) & (df["Date"].dt.day.isin([25, 31])))
     ).astype(int)
+
+    abs_diwali = np.abs(df["days_from_diwali"].values)
+    df["festival_emission_weight"] = np.where(
+        abs_diwali == 0,
+        1.0,
+        np.where(
+            abs_diwali == 1,
+            0.85,
+            np.where(
+                abs_diwali <= 3,
+                0.55,
+                np.where(df["is_festival_day"] == 1, 0.45, 0.0),
+            ),
+        ),
+    )
+
+    d_after = df["days_from_diwali"].values
+    wind_clean = df["wind_speed_ms"].fillna(2.2).values
+    df["post_diwali_decay"] = np.where(
+        (d_after >= 0) & (d_after <= 6),
+        np.exp(-d_after / 2.5) * (2.5 / np.maximum(wind_clean, 0.8)),
+        0.0,
+    )
 
     north_cities = {
         "Delhi", "New Delhi", "Gurugram", "Lucknow", "Patna", "Jaipur",
@@ -311,6 +338,9 @@ def prepare_engineered_dataset() -> pd.DataFrame:
             | ((df["month"] == 11) & (df["Date"].dt.day <= 25))
         )
     ).astype(int)
+
+    nw_align = np.maximum(0.0, np.cos(np.radians(df["wind_direction_deg"].fillna(300.0).values - 315.0)))
+    df["stubble_nw_transport_index"] = df["is_stubble_burning_season"].values * nw_align
 
     df["is_winter_inversion"] = (
         df["month"].isin([11, 12, 1, 2])
@@ -462,7 +492,7 @@ def train_and_evaluate_pipeline() -> Dict[str, Any]:
                     ),
                 ),
             ],
-            weights=[0.45, 0.35, 0.20],
+            weights=[0.60, 0.25, 0.15],
         ),
     }
 
