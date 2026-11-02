@@ -1115,16 +1115,34 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
       }
       if (stateName) params.set("state", stateName);
 
-      try {
-        const resp = await fetch(`/api/predict?${params.toString()}`);
-        const data = await resp.json();
-        if (!resp.ok || data.error) {
-          document.getElementById("coverageText").textContent = data.error || "Unable to load city forecast.";
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const resp = await fetch(`/api/predict?${params.toString()}`, {
+            headers: { "Accept": "application/json" }
+          });
+          const ct = resp.headers.get("content-type") || "";
+          if (!ct.includes("application/json")) {
+            if (attempt < 2) {
+              await new Promise(r => setTimeout(r, 1500));
+              continue;
+            }
+            document.getElementById("coverageText").textContent = "Server is warming up. Please click Refresh Forecast in a moment.";
+            return;
+          }
+          const data = await resp.json();
+          if (!resp.ok || data.error) {
+            document.getElementById("coverageText").textContent = data.error || "Unable to load city forecast.";
+            return;
+          }
+          renderForecastData(data);
           return;
+        } catch (err) {
+          if (attempt < 2) {
+            await new Promise(r => setTimeout(r, 1500));
+            continue;
+          }
+          document.getElementById("coverageText").textContent = "Network error while fetching city forecast.";
         }
-        renderForecastData(data);
-      } catch (err) {
-        document.getElementById("coverageText").textContent = "Network error while fetching city forecast.";
       }
     }
 
@@ -1269,7 +1287,13 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
 
     async function fetchAutocomplete(query) {
       try {
-        const resp = await fetch(`/api/cities?q=${encodeURIComponent(query)}&limit=8`);
+        const resp = await fetch(`/api/cities?q=${encodeURIComponent(query)}&limit=8`, {
+          headers: { "Accept": "application/json" }
+        });
+        const ct = resp.headers.get("content-type") || "";
+        if (!resp.ok || !ct.includes("application/json")) {
+          return;
+        }
         const data = await resp.json();
         const items = data.results || [];
         if (!items.length) {
@@ -1305,8 +1329,8 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
             loadCityForecast(c, lat, lon, s);
           });
         });
-      } catch (e) {
-        console.error("Autocomplete error:", e);
+      } catch (_err) {
+        // Ignore transient network/warmup errors during typing
       }
     }
 
